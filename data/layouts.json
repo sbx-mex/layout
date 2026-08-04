@@ -46,7 +46,7 @@
     "Otra Área"
   ],
   "improvementModule": {
-    "title": "Mejora Operativa Max–Min",
+    "title": "Mejora Operativa Antes | Después",
     "areas": [
       "BOH - Rack",
       "BOH - Refrigerador",
@@ -60,7 +60,7 @@
       "Otro espacio"
     ],
     "references": [
-      { "id": "maxmin", "title": "Estándar Max–Min", "src": "assets/maxmin/referencia-maxmin.png" },
+      { "id": "maxmin", "title": "Estándar de acomodo", "src": "assets/maxmin/referencia-maxmin.png" },
       { "id": "layout", "title": "Layout de ejemplo", "src": "assets/maxmin/layout_ejemplo.jpeg" },
       { "id": "back", "title": "Organización de Back", "src": "assets/maxmin/limpieza_back.jpeg" },
       { "id": "mejora-1", "title": "Ejemplo de mejora 1", "src": "assets/maxmin/limpieza_ejemplo_1.jpeg" },

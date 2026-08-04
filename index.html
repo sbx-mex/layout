@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#006241">
-  <meta name="description" content="Herramienta operativa para comparar layouts y documentar mejoras Max–Min en tienda.">
+  <meta name="description" content="Herramienta operativa para comparar layouts y documentar mejoras Antes y Después en tienda.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -25,7 +25,7 @@
     <div class="topbar__inner">
       <a class="brand" href="#inicio" aria-label="Ir al inicio">
         <span class="brand__mark" aria-hidden="true">✦</span>
-        <span><strong>Starbucks Layouts</strong><small>Layout + comparativo de mejora</small></span>
+        <span><strong>Starbucks Layouts</strong><small>Lay Out + Mejora Operativa</small></span>
       </a>
       <div class="status-group">
         <span id="saveStatus" class="status status--saved" role="status" aria-live="polite">Listo</span>
@@ -35,7 +35,7 @@
     </div>
     <nav class="step-nav" aria-label="Progreso de la revisión">
       <button class="step-nav__item current" type="button" data-jump="configuracion" data-step="1"><span>1</span><strong>Configurar</strong></button>
-      <button class="step-nav__item" type="button" data-jump="variantNavigation" data-step="2"><span>2</span><strong>Elegir layout</strong></button>
+      <button class="step-nav__item" type="button" data-jump="referenceSelector" data-step="2"><span>2</span><strong>Elegir referencia</strong></button>
       <button class="step-nav__item" type="button" data-jump="sheet" data-step="3"><span>3</span><strong>Comparar</strong></button>
     </nav>
   </header>
@@ -45,7 +45,7 @@
       <div class="hero__copy">
         <span class="eyebrow">Herramienta operativa</span>
         <h1 id="heroTitle">Del layout de referencia a una mejora visible</h1>
-        <p>Compara la estación con su modelo y, cuando lo necesites, documenta mejoras Max–Min en Back, gavetas o cualquier espacio.</p>
+        <p>Compara la estación con su modelo y, cuando lo necesites, documenta una mejora operativa con evidencia Antes y Después.</p>
         <div class="hero__actions">
           <button id="startButton" class="button" type="button">Iniciar revisión</button>
           <span id="catalogSummary" class="catalog-summary">Cargando catálogo…</span>
@@ -84,24 +84,9 @@
         <div id="recentStations" class="recent__items"></div>
       </div>
 
-      <div id="variantNavigation" class="variant-navigation">
-        <div class="variant-navigation__head">
-          <div>
-            <span class="eyebrow">Layout de referencia</span>
-            <h2>Selecciona el modelo</h2>
-          </div>
-          <div class="variant-controls" aria-label="Navegación entre variantes">
-            <button id="previousVariant" class="icon-button" type="button" aria-label="Variante anterior">←</button>
-            <span id="variantCounter" class="counter" aria-live="polite"></span>
-            <button id="nextVariant" class="icon-button" type="button" aria-label="Variante siguiente">→</button>
-          </div>
-        </div>
-        <div class="catalog" id="catalog" role="listbox" aria-label="Variantes de layout" tabindex="0"></div>
-      </div>
-
       <div class="continue-row">
-        <div><strong id="selectionSummary">Completa la selección</strong><small>Podrás regresar sin perder tu avance.</small></div>
-        <button id="continueButton" class="button button--wide" type="button">Ir a comparar</button>
+        <div><strong id="selectionSummary">Completa la selección</strong><small>La referencia se elige en el carrete visual.</small></div>
+        <button id="continueButton" class="button button--wide" type="button">Ver referencia</button>
       </div>
     </section>
 
@@ -120,6 +105,17 @@
 
       <div class="compare" id="compare">
         <article class="block" id="theoryBlock">
+          <div class="reference-selector pdf-hide" id="referenceSelector">
+            <div class="reference-selector__head">
+              <div><span class="eyebrow">Modelos de la estación</span><strong>Elige la referencia</strong></div>
+              <span id="variantCounter" class="counter" aria-live="polite"></span>
+            </div>
+            <div class="reference-reel" aria-label="Carrete de referencias de la estación">
+              <button id="comparePrevious" class="reel-arrow" type="button" aria-label="Referencia anterior">←</button>
+              <div id="compareReferenceReel" class="reference-reel__track" role="listbox" tabindex="0"></div>
+              <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente">→</button>
+            </div>
+          </div>
           <div class="block-head">
             <div><span class="eyebrow">Referencia</span><h3 id="layoutTitle">ESP 01</h3></div>
             <button id="zoomTheoryButton" class="button button--ghost button--compact pdf-hide" type="button">Ampliar</button>
@@ -127,12 +123,6 @@
           <button id="theoryImageButton" class="imgbox imgbox--button" type="button" aria-label="Ampliar layout de referencia">
             <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async">
           </button>
-          <div class="reference-reel pdf-hide" aria-label="Carrete de referencias de la estación">
-            <button id="comparePrevious" class="reel-arrow" type="button" aria-label="Referencia anterior">←</button>
-            <div id="compareReferenceReel" class="reference-reel__track" role="listbox" tabindex="0"></div>
-            <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente">→</button>
-          </div>
-          <p class="helper pdf-hide">Recorre el carrete: la referencia activa se actualiza en el modelo y en el PDF.</p>
         </article>
 
         <article class="block" id="realBlock">
@@ -141,8 +131,13 @@
             <span id="photoStatus" class="photo-status pdf-hide">Pendiente</span>
           </div>
           <div class="imgbox dropzone" id="realBox" tabindex="0" role="button" aria-label="Agregar evidencia real con cámara, galería o arrastrando una imagen">
-            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong><small>Toca o arrastra una imagen</small></div>
+            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Agrega una fotografía</strong><small>Procura luz uniforme y encuadre completo</small></div>
             <img id="realImg" class="hidden" alt="Foto del acomodo real">
+          </div>
+          <div class="photo-actions pdf-hide" aria-label="Acciones de evidencia real">
+            <button class="button button--photo" type="button" data-photo-action="camera" data-photo-target="real">Foto</button>
+            <button class="button button--ghost" type="button" data-photo-action="attach" data-photo-target="real">Adjuntar</button>
+            <button class="button button--danger" type="button" data-photo-action="delete" data-photo-target="real">Eliminar</button>
           </div>
         </article>
 
@@ -153,8 +148,13 @@
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 1</span><h3 id="optTitle1"></h3></div></div>
           <div class="imgbox dropzone" data-drop-target="opt1" tabindex="0" role="button" aria-label="Seleccionar primera evidencia">
-            <div class="empty pdf-hide" id="optEmpty1"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong></div>
+            <div class="empty pdf-hide" id="optEmpty1"><span aria-hidden="true">▣</span><strong>Agrega una fotografía</strong></div>
             <img id="optImg1" class="hidden" alt="Primera evidencia real">
+          </div>
+          <div class="photo-actions pdf-hide">
+            <button class="button button--photo" type="button" data-photo-action="camera" data-photo-target="opt1">Foto</button>
+            <button class="button button--ghost" type="button" data-photo-action="attach" data-photo-target="opt1">Adjuntar</button>
+            <button class="button button--danger" type="button" data-photo-action="delete" data-photo-target="opt1">Eliminar</button>
           </div>
         </article>
 
@@ -165,8 +165,13 @@
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 2</span><h3 id="optTitle2"></h3></div></div>
           <div class="imgbox dropzone" data-drop-target="opt2" tabindex="0" role="button" aria-label="Seleccionar segunda evidencia">
-            <div class="empty pdf-hide" id="optEmpty2"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong></div>
+            <div class="empty pdf-hide" id="optEmpty2"><span aria-hidden="true">▣</span><strong>Agrega una fotografía</strong></div>
             <img id="optImg2" class="hidden" alt="Segunda evidencia real">
+          </div>
+          <div class="photo-actions pdf-hide">
+            <button class="button button--photo" type="button" data-photo-action="camera" data-photo-target="opt2">Foto</button>
+            <button class="button button--ghost" type="button" data-photo-action="attach" data-photo-target="opt2">Adjuntar</button>
+            <button class="button button--danger" type="button" data-photo-action="delete" data-photo-target="opt2">Eliminar</button>
           </div>
         </article>
       </div>
@@ -186,8 +191,8 @@
       <div class="improvement-intro">
         <div>
           <span class="eyebrow">Herramienta complementaria</span>
-          <h2>Mejora Operativa</h2>
-          <p>Haz visible la mejora: documenta avances simples que faciliten el acomodo, reduzcan recorridos y fortalezcan la operación diaria.</p>
+          <h2>Mejora Operativa Antes | Después</h2>
+          <p>Haz visible el avance con un comparativo cercano, claro y útil para la operación diaria.</p>
         </div>
         <button id="toggleImprovementButton" class="button button--ghost" type="button" aria-expanded="false" aria-controls="improvementContent">Iniciar mejora</button>
       </div>
@@ -199,9 +204,9 @@
               <svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3M2 19h20"/></svg>
             </span>
             <div>
-              <span class="eyebrow">Comparativo Antes / Después</span>
-              <h2 id="improvementTitle">Mejora Operativa Max–Min</h2>
-              <p>Registra uno o varios espacios y conserva evidencia clara del avance.</p>
+              <span class="eyebrow">Mejora continua</span>
+              <h2 id="improvementTitle">Mejora Operativa Antes | Después</h2>
+              <p>Registra uno o varios espacios; la exportación crea las páginas necesarias.</p>
               <p id="improvementMeta" class="improvement-meta">Tienda: Sin definir</p>
             </div>
           </div>
@@ -210,15 +215,15 @@
         <div id="improvementContent" class="improvement-content hidden">
           <div class="maxmin-reference pdf-hide">
             <div class="maxmin-reference__viewer">
-              <button id="maxminReferenceButton" type="button" aria-label="Ampliar referencia Max–Min">
-                <img id="maxminReferenceImage" alt="Referencia visual Max–Min" decoding="async">
+              <button id="maxminReferenceButton" type="button" aria-label="Ampliar referencia de mejora">
+                <img id="maxminReferenceImage" alt="Referencia visual de mejora operativa" decoding="async">
               </button>
-              <div><strong id="maxminReferenceTitle">Referencia Max–Min</strong><span id="maxminReferenceCounter"></span></div>
+              <div><strong id="maxminReferenceTitle">Referencia de mejora</strong><span id="maxminReferenceCounter"></span></div>
             </div>
             <div class="maxmin-reel-row">
-              <button id="maxminPrevious" class="reel-arrow" type="button" aria-label="Referencia Max–Min anterior">←</button>
+              <button id="maxminPrevious" class="reel-arrow" type="button" aria-label="Referencia de mejora anterior">←</button>
               <div id="maxminReferenceReel" class="maxmin-reference__reel" role="listbox" tabindex="0"></div>
-              <button id="maxminNext" class="reel-arrow" type="button" aria-label="Referencia Max–Min siguiente">→</button>
+              <button id="maxminNext" class="reel-arrow" type="button" aria-label="Referencia de mejora siguiente">→</button>
             </div>
           </div>
 
@@ -268,7 +273,10 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="attachInput" class="hidden" type="file" accept="image/*">
+  <input id="cameraInput" class="hidden" type="file" accept="image/*" capture="environment">
   <input id="optAttach1" class="hidden" type="file" accept="image/*">
+  <input id="optCamera1" class="hidden" type="file" accept="image/*" capture="environment">
   <input id="optAttach2" class="hidden" type="file" accept="image/*">
+  <input id="optCamera2" class="hidden" type="file" accept="image/*" capture="environment">
 </body>
 </html>

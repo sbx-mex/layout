@@ -1,6 +1,6 @@
 # Starbucks Lay Out + Mejora Operativa
 
-Conjunto de dos herramientas complementarias: Lay Out como función principal y Mejora Operativa como apoyo para documentar avances Max–Min en Back, gavetas, racks u otros espacios.
+Conjunto de dos herramientas complementarias: Lay Out como función principal y Mejora Operativa Antes | Después como apoyo para documentar avances en Back, gavetas, racks u otros espacios.
 
 ## Recorrido operativo
 
@@ -15,7 +15,7 @@ La selección se conserva localmente en el dispositivo. Las fotografías se proc
 
 ## Catálogo JSON
 
-`data/layouts.json` es la fuente única para campañas, categorías, estaciones, variantes, áreas opcionales y referencias Max–Min. Su contrato formal está documentado en `data/layouts.schema.json`. Para agregar una estación:
+`data/layouts.json` es la fuente única para campañas, categorías, estaciones, variantes, áreas opcionales y referencias de mejora. Su contrato formal está documentado en `data/layouts.schema.json`. Para agregar una estación:
 
 - Usa un `code` único.
 - Asigna una categoría existente.

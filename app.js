@@ -3,9 +3,9 @@
 const DATA_URL = "data/layouts.json";
 const STORAGE_KEY = "layout-preferences-v3";
 const PHOTO_TARGETS = {
-  real: { img: "realImg", empty: "realEmpty", input: "attachInput" },
-  opt1: { img: "optImg1", empty: "optEmpty1", input: "optAttach1" },
-  opt2: { img: "optImg2", empty: "optEmpty2", input: "optAttach2" }
+  real: { img: "realImg", empty: "realEmpty", input: "attachInput", camera: "cameraInput" },
+  opt1: { img: "optImg1", empty: "optEmpty1", input: "optAttach1", camera: "optCamera1" },
+  opt2: { img: "optImg2", empty: "optEmpty2", input: "optAttach2", camera: "optCamera2" }
 };
 
 const $ = id => document.getElementById(id);
@@ -182,36 +182,10 @@ function renderRecentStations() {
 
 function renderCatalog() {
   const station = getStation();
-  const catalog = $("catalog");
-  catalog.replaceChildren();
-  $("variantNavigation").classList.toggle("hidden", station.optional);
+  $("referenceSelector").classList.toggle("hidden", station.optional);
   if (station.optional) return;
   selectedVariant = Math.max(0, Math.min(selectedVariant, station.variants - 1));
-  for (let index = 0; index < station.variants; index += 1) {
-    const option = document.createElement("button");
-    const label = variantLabel(index);
-    option.type = "button";
-    option.className = `thumb${index === selectedVariant ? " active" : ""}`;
-    option.setAttribute("role", "option");
-    option.setAttribute("aria-selected", String(index === selectedVariant));
-    option.setAttribute("aria-label", `Seleccionar ${label}`);
-    option.dataset.index = String(index);
-    option.tabIndex = index === selectedVariant ? 0 : -1;
-    const img = document.createElement("img");
-    img.src = imagePath(index);
-    img.alt = "";
-    img.loading = index < 3 ? "eager" : "lazy";
-    img.decoding = "async";
-    img.addEventListener("error", () => { img.src = placeholder(label); }, { once: true });
-    const text = document.createElement("span");
-    text.textContent = label;
-    option.append(img, text);
-    option.addEventListener("click", () => selectVariant(index));
-    catalog.append(option);
-  }
-  $("variantCounter").textContent = `${selectedVariant + 1} / ${station.variants}`;
-  $("previousVariant").disabled = selectedVariant === 0;
-  $("nextVariant").disabled = selectedVariant === station.variants - 1;
+  renderCompareReferenceReel();
 }
 
 function createReelThumb({ image, label, active, onSelect }) {
@@ -248,6 +222,7 @@ function renderCompareReferenceReel() {
   }
   $("comparePrevious").disabled = selectedVariant === 0;
   $("compareNext").disabled = selectedVariant === station.variants - 1;
+  $("variantCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
   requestAnimationFrame(() => reel.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "center" }));
 }
 
@@ -304,11 +279,17 @@ function addImprovement() {
 
 function improvementPhoto(item, kind, label) {
   const source = item[kind];
-  return `<label class="improvement-photo${source ? " has-photo" : ""}">
-    <div class="improvement-photo__head"><strong>${label}</strong><span class="pdf-hide">${source ? "Cambiar evidencia" : "Seleccionar evidencia"}</span></div>
+  return `<div class="improvement-photo${source ? " has-photo" : ""}">
+    <div class="improvement-photo__head"><strong>${label}</strong><span class="pdf-hide">${source ? "Lista" : "Pendiente"}</span></div>
     <div class="improvement-photo__preview">${source ? `<img src="${source}" alt="${label} de ${escapeHtml(item.area)}">` : `<span aria-hidden="true">▣</span><small>Sin evidencia</small>`}</div>
+    <div class="photo-actions pdf-hide">
+      <button class="button button--photo" type="button" data-improvement-action="camera" data-improvement-kind="${kind}" data-improvement-id="${item.id}">Foto</button>
+      <button class="button button--ghost" type="button" data-improvement-action="attach" data-improvement-kind="${kind}" data-improvement-id="${item.id}">Adjuntar</button>
+      <button class="button button--danger" type="button" data-improvement-action="delete" data-improvement-kind="${kind}" data-improvement-id="${item.id}">Eliminar</button>
+    </div>
     <input class="hidden" type="file" accept="image/*" data-improvement-file="${kind}" data-improvement-id="${item.id}">
-  </label>`;
+    <input class="hidden" type="file" accept="image/*" capture="environment" data-improvement-camera="${kind}" data-improvement-id="${item.id}">
+  </div>`;
 }
 
 function renderImprovementList() {
@@ -345,7 +326,7 @@ function selectVariant(index, focus = false) {
   selectedVariant = Math.max(0, Math.min(index, station.variants - 1));
   renderCatalog();
   updateView();
-  const active = $("catalog").querySelector(".thumb.active");
+  const active = $("compareReferenceReel").querySelector(".reel-thumb.active");
   active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   if (focus) active?.focus();
 }
@@ -455,6 +436,7 @@ function clearPhoto(target, announceChange = true) {
   $(item.img).classList.add("hidden");
   $(item.empty).classList.remove("hidden");
   $(item.input).value = "";
+  $(item.camera).value = "";
   updateCompletion();
   if (announceChange) announce("Evidencia retirada.");
 }
@@ -572,16 +554,8 @@ function bindEvents() {
     renderCatalog();
     updateView();
   });
-  $("previousVariant").addEventListener("click", () => selectVariant(selectedVariant - 1));
-  $("nextVariant").addEventListener("click", () => selectVariant(selectedVariant + 1));
   $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
-  $("catalog").addEventListener("keydown", event => {
-    const keys = { ArrowLeft: -1, ArrowRight: 1 };
-    if (event.key in keys) { event.preventDefault(); selectVariant(selectedVariant + keys[event.key], true); }
-    if (event.key === "Home") { event.preventDefault(); selectVariant(0, true); }
-    if (event.key === "End") { event.preventDefault(); selectVariant(getStation().variants - 1, true); }
-  });
   $("compareReferenceReel").addEventListener("keydown", event => {
     if (event.key === "ArrowLeft") { event.preventDefault(); selectVariant(selectedVariant - 1, true); }
     if (event.key === "ArrowRight") { event.preventDefault(); selectVariant(selectedVariant + 1, true); }
@@ -604,6 +578,20 @@ function bindEvents() {
     const remove = event.target.closest("[data-improvement-remove]");
     if (remove) improvementItems = improvementItems.filter(item => item.id !== Number(remove.dataset.improvementRemove));
     if (remove) { renderImprovementList(); updateCompletion(); }
+    const action = event.target.closest("[data-improvement-action]");
+    if (!action) return;
+    const item = improvementItems.find(candidate => candidate.id === Number(action.dataset.improvementId));
+    if (!item) return;
+    const kind = action.dataset.improvementKind;
+    if (action.dataset.improvementAction === "delete") {
+      item[kind] = null;
+      renderImprovementList();
+      updateCompletion();
+      announce(`Evidencia ${kind === "before" ? "Antes" : "Después"} eliminada.`);
+      return;
+    }
+    const selector = action.dataset.improvementAction === "camera" ? "data-improvement-camera" : "data-improvement-file";
+    $("improvementList").querySelector(`[${selector}="${kind}"][data-improvement-id="${item.id}"]`)?.click();
   });
   $("improvementList").addEventListener("input", event => {
     const areaId = Number(event.target.dataset.improvementArea);
@@ -612,8 +600,8 @@ function bindEvents() {
     if (noteId) improvementItems.find(item => item.id === noteId).observation = event.target.value;
   });
   $("improvementList").addEventListener("change", event => {
-    if (!event.target.matches("[data-improvement-file]")) return;
-    loadImprovementPhoto(event.target.files[0], Number(event.target.dataset.improvementId), event.target.dataset.improvementFile);
+    if (event.target.matches("[data-improvement-file]")) loadImprovementPhoto(event.target.files[0], Number(event.target.dataset.improvementId), event.target.dataset.improvementFile);
+    if (event.target.matches("[data-improvement-camera]")) loadImprovementPhoto(event.target.files[0], Number(event.target.dataset.improvementId), event.target.dataset.improvementCamera);
   });
   [1, 2].forEach(number => {
     $(`optSelect${number}`).addEventListener("change", event => {
@@ -624,7 +612,14 @@ function bindEvents() {
   });
   Object.entries(PHOTO_TARGETS).forEach(([target, item]) => {
     $(item.input).addEventListener("change", event => loadPhoto(event.target.files[0], target));
+    $(item.camera).addEventListener("change", event => loadPhoto(event.target.files[0], target));
   });
+  document.querySelectorAll("[data-photo-action]").forEach(button => button.addEventListener("click", () => {
+    const target = button.dataset.photoTarget;
+    const action = button.dataset.photoAction;
+    if (action === "delete") return clearPhoto(target);
+    $(action === "camera" ? PHOTO_TARGETS[target].camera : PHOTO_TARGETS[target].input).click();
+  }));
   bindDropzone($("realBox"), "real");
   document.querySelectorAll("[data-drop-target]").forEach(element => bindDropzone(element, element.dataset.dropTarget));
   $("realBox").addEventListener("click", () => $("attachInput").click());

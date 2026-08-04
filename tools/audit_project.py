@@ -28,9 +28,8 @@ REQUIRED = (
 GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
 OBSOLETE_FILES = ("README.txt",)
 VISUAL_SELECTOR_IDS = {
-    "catalog",
-    "previousVariant",
-    "nextVariant",
+    "referenceSelector",
+    "variantCounter",
     "compareReferenceReel",
     "comparePrevious",
     "compareNext",
@@ -125,22 +124,22 @@ def validate_catalog(data: dict, errors: list[str]) -> set[str]:
     if not improvement.get("title") or not isinstance(improvement_areas, list) or not improvement_areas:
         errors.append("improvementModule requiere título y áreas")
     if len(improvement_areas) != len(set(improvement_areas)):
-        errors.append("Existen áreas Max–Min duplicadas")
+        errors.append("Existen áreas de mejora duplicadas")
     if not isinstance(references, list) or not references:
         errors.append("improvementModule requiere referencias visuales")
     reference_ids: list[str] = []
     for reference in references:
         if not all(reference.get(key) for key in ("id", "title", "src")):
-            errors.append("Cada referencia Max–Min requiere id, title y src")
+            errors.append("Cada referencia de mejora requiere id, title y src")
             continue
         reference_ids.append(reference["id"])
         source = reference["src"]
         if not source.startswith("assets/maxmin/"):
-            errors.append(f"Referencia Max–Min fuera de assets/maxmin: {source}")
+            errors.append(f"Referencia de mejora fuera de assets/maxmin: {source}")
         else:
             expected_assets.add(source.removeprefix("assets/"))
     if len(reference_ids) != len(set(reference_ids)):
-        errors.append("Existen IDs Max–Min duplicados")
+        errors.append("Existen IDs de referencia de mejora duplicados")
     return expected_assets
 
 
@@ -213,10 +212,19 @@ def main() -> int:
     detected_sharing = [term for term in forbidden_sharing if term in combined_source]
     if detected_sharing:
         errors.append(f"Persisten enlaces o acciones compartidas: {', '.join(detected_sharing)}")
-    forbidden_interface = ("tomar foto", ">adjuntar<", ">quitar<", "cambiar selección", "uso operativo", "paso 3")
+    forbidden_interface = ("cambiar selección", "uso operativo", "paso 3")
     detected_interface = [term for term in forbidden_interface if term in combined_source]
     if detected_interface:
         errors.append(f"Persisten instrucciones o botones redundantes: {', '.join(detected_interface)}")
+    if 'id="catalog"' in html or 'id="variantNavigation"' in html:
+        errors.append("Persisten dos selectores de referencia; debe existir un solo carrete")
+    if html.count('id="compareReferenceReel"') != 1:
+        errors.append("Debe existir exactamente un carrete de Lay Out")
+    for action in ("camera", "attach", "delete"):
+        if f'data-photo-action="{action}"' not in html:
+            errors.append(f"Falta acción fotográfica: {action}")
+    if ".is-exporting .pdf-hide" not in css:
+        errors.append("La exportación no excluye explícitamente los controles operativos")
     if '<html lang="es">' not in html or "skip-link" not in html:
         errors.append("Faltan metadatos o navegación accesible")
     if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
@@ -277,7 +285,7 @@ def main() -> int:
     print("AUDITORÍA APROBADA")
     print(f"- {report['layouts']} layouts declarados en JSON y presentes")
     print(f"- {report['stations']} opciones de estación y {report['campaigns']} campañas")
-    print(f"- Módulo Max–Min: {report['maxMinReferences']} referencias y {report['maxMinAreas']} áreas")
+    print(f"- Mejora Operativa: {report['maxMinReferences']} referencias y {report['maxMinAreas']} áreas")
     print(f"- {len(unused_names)} recursos huérfanos y {len(obsolete_files)} archivos obsoletos detectados")
     print(f"- {len(removed)} residuos eliminados de forma segura")
     print(f"- {len(duplicate_groups)} grupos idénticos conservados por tener referencias distintas")
