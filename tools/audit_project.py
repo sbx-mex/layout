@@ -30,6 +30,8 @@ GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
 OBSOLETE_FILES = ("README.txt",)
 VISUAL_SELECTOR_IDS = {
     "referenceSelector",
+    "toggleCatalogButton",
+    "swipeHint",
     "catalogHint",
     "activeReferenceMessage",
     "compareReferenceReel",
@@ -40,7 +42,6 @@ VISUAL_SELECTOR_IDS = {
     "maxminReferenceReel",
     "improvementList",
     "exportButton",
-    "editReferenceButton",
     "exportImprovementButton",
     "improvementMeta",
     "improvementPageCount",
@@ -227,14 +228,20 @@ def main() -> int:
         errors.append("Persisten dos selectores de referencia; debe existir un solo carrete")
     if html.count('id="compareReferenceReel"') != 1:
         errors.append("Debe existir exactamente un carrete de Lay Out")
-    if "Todas las opciones permanecen visibles" not in html or "grid-template-columns:repeat(auto-fit" not in css:
-        errors.append("El carrete no funciona como catálogo dinámico visible")
+    if 'class="reference-selector reference-selector--collapsible pdf-hide hidden"' not in html:
+        errors.append("El catálogo no inicia plegado después de definir la estación")
+    if 'aria-controls="referenceSelector"' not in html or "setCatalogExpanded" not in js:
+        errors.append("Falta el control sutil para volver a abrir el catálogo")
     if 'id="variantSelect"' in html or 'id="variantCounter"' in html:
         errors.append("Persisten la lista desplegable o el contador redundante del catálogo")
     if '$("variantSelect")' in js or '$("variantCounter")' in js:
         errors.append("app.js conserva dependencias del selector redundante")
     if "Selecciona cualquier imagen para verla debajo" not in html:
         errors.append("El catálogo no comunica que cada miniatura actualiza el modelo")
+    if "Desliza para cambiar" not in html or 'class="swipe-hint pdf-hide"' not in html:
+        errors.append("Falta la ayuda de deslizamiento excluida del PDF")
+    if "selectVariant(index, false, true)" not in js:
+        errors.append("Seleccionar una miniatura no repliega el catálogo")
     if 'selectedVariant = (Number(index) + station.variants) % station.variants' not in js:
         errors.append("La navegación del catálogo no funciona en ciclo continuo")
     if "bindReferenceSwipe" not in js:
@@ -285,10 +292,8 @@ def main() -> int:
     )
     if any(token not in js for token in adaptive_pdf_tokens):
         errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
-    if 'class="reference-selector reference-selector--persistent pdf-hide"' not in html:
-        errors.append("El carrete de Lay Out no está configurado como catálogo persistente")
-    if "starbucks-layouts-v13-persistent-reel-pdf-fit" not in service_worker:
-        errors.append("El caché PWA no garantiza la entrega de la corrección del carrete y PDF")
+    if "starbucks-layouts-v14-collapsible-catalog-swipe" not in service_worker:
+        errors.append("El caché PWA no garantiza la entrega del catálogo plegable")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
     if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:
