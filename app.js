@@ -1,9 +1,9 @@
 "use strict";
 
 const campaigns = [
-  { id: "WINTER", icon: "❄️" }, { id: "SPRING", icon: "🌸" },
-  { id: "SUMMER", icon: "☀️" }, { id: "SUMMER II", icon: "🏖️" },
-  { id: "FALL", icon: "🍂" }, { id: "XMAS", icon: "🎄" }
+  { id: "Winter", icon: "❄️" }, { id: "Spring", icon: "🌸" },
+  { id: "Summer", icon: "☀️" }, { id: "Summer II", icon: "🏖️" },
+  { id: "Fall", icon: "🍂" }, { id: "Xmas", icon: "🎄" }
 ];
 const optionalAreas = ["BOH - Refrigerador 2 Puertas", "BOH - Refrigerador 1 Puerta", "BOH - Congelador 2 Puertas", "BOH - Congelador 1 Puerta", "BOH - Rack", "Barra - Refrigerador 2 Puertas", "Barra - Refrigerador 1 Puerta", "Barra - Gaveta", "Otra Área"];
 const stations = [
