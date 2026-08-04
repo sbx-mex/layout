@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v12-pdf-local";
+const CACHE = "starbucks-layouts-v13-persistent-reel-pdf-fit";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -30,11 +30,17 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(caches.match(event.request).then(cached => {
-    const network = fetch(event.request).then(response => {
+  const requestUrl = new URL(event.request.url);
+  const isAppCode = event.request.mode === "navigate" || /\/(?:index\.html|app\.js|styles\.css|sw\.js)$/.test(requestUrl.pathname);
+  if (isAppCode) {
+    event.respondWith(fetch(event.request).then(response => {
       if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
       return response;
-    }).catch(() => cached || (event.request.mode === "navigate" ? caches.match("./index.html") : Response.error()));
-    return cached || network;
-  }));
+    }).catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html"))));
+    return;
+  }
+  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+    if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
+    return response;
+  })));
 });

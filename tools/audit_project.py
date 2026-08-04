@@ -275,8 +275,20 @@ def main() -> int:
     layout_export_source = js[js.find("async function buildLayoutExportDocument"):js.find("async function exportLayoutPdf")]
     if "href=" in layout_export_source or "<a " in layout_export_source or "pdf.link" in layout_export_source:
         errors.append("La superficie PDF de Lay Out contiene hipervínculos")
-    if 'drawPdfCard(pdf, cards[0], 8, 32, 194, 112' not in js or 'drawPdfCard(pdf, cards[1], 8, 148, 194, 135' not in js:
-        errors.append("La hoja PDF no reserva una superficie mayor para la fotografía real")
+    adaptive_pdf_tokens = (
+        "layoutPdfCardGeometry(pdf, cards[1].source)",
+        "geometry.referenceHeight",
+        "geometry.realY",
+        "geometry.realHeight",
+        'orientation = "portrait"',
+        'orientation = "landscape"',
+    )
+    if any(token not in js for token in adaptive_pdf_tokens):
+        errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
+    if 'class="reference-selector reference-selector--persistent pdf-hide"' not in html:
+        errors.append("El carrete de Lay Out no está configurado como catálogo persistente")
+    if "starbucks-layouts-v13-persistent-reel-pdf-fit" not in service_worker:
+        errors.append("El caché PWA no garantiza la entrega de la corrección del carrete y PDF")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
     if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:

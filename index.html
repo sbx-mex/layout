@@ -108,9 +108,7 @@
         <span id="dateLabel" class="date-label"></span>
       </div>
 
-      <div class="compare" id="compare">
-        <article class="block" id="theoryBlock">
-          <div class="reference-selector pdf-hide" id="referenceSelector">
+      <div class="reference-selector reference-selector--persistent pdf-hide" id="referenceSelector">
             <div class="reference-selector__head">
               <div><span class="eyebrow">Catálogo dinámico</span><strong>Elige y compara sin perder de vista las opciones</strong></div>
               <div class="catalog-state"><small id="catalogHint">Todas las opciones permanecen visibles</small></div>
@@ -124,7 +122,10 @@
               <div id="compareReferenceReel" class="reference-reel__track" role="listbox" tabindex="0"></div>
               <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente" title="Referencia siguiente">→</button>
             </div>
-          </div>
+      </div>
+
+      <div class="compare" id="compare">
+        <article class="block" id="theoryBlock">
           <div class="block-head">
             <div><span class="eyebrow">Referencia</span><h3 id="layoutTitle">ESP 01</h3></div>
             <button id="zoomTheoryButton" class="button button--ghost button--compact pdf-hide" type="button">Ampliar</button>
@@ -148,6 +149,7 @@
             <button class="button button--ghost" type="button" data-photo-action="attach" data-photo-target="real">Adjuntar</button>
             <button class="button button--danger" type="button" data-photo-action="delete" data-photo-target="real">Eliminar</button>
           </div>
+          <p class="photo-orientation-tip pdf-hide"><span aria-hidden="true">▭</span> Recomendación: toma la foto real en horizontal para aprovechar mejor el espacio. La exportación también se ajusta automáticamente a fotos verticales.</p>
         </article>
 
         <article class="block hidden" id="optionalBlock1">

@@ -607,6 +607,30 @@ function drawPdfCard(pdf, card, x, y, width, height, alias) {
   drawPdfImageContain(pdf, card.source, x + 3.5, y + 17, width - 7, height - 20.5, alias);
 }
 
+function layoutPdfCardGeometry(pdf, realSource) {
+  const top = 32;
+  const bottom = 283;
+  const gap = 4;
+  let referenceHeight = 109;
+  let orientation = "empty";
+  if (realSource) {
+    const properties = pdf.getImageProperties(realSource);
+    const ratio = properties.width / properties.height;
+    if (ratio >= 1.2) {
+      referenceHeight = 109;
+      orientation = "landscape";
+    } else if (ratio <= 0.82) {
+      referenceHeight = 91;
+      orientation = "portrait";
+    } else {
+      referenceHeight = 100;
+      orientation = "square";
+    }
+  }
+  const realY = top + referenceHeight + gap;
+  return { referenceHeight, realY, realHeight: bottom - realY, orientation };
+}
+
 async function buildLayoutExportDocument() {
   const station = getStation();
   const campaign = getCampaign();
@@ -631,8 +655,9 @@ async function buildLayoutExportDocument() {
     creator: "Starbucks Layouts"
   });
   drawPdfHeader(pdf, "Lay Out", `Layout - ${campaign.label}`, `${optional ? "Áreas" : "Estación"}: ${label}`, store);
-  drawPdfCard(pdf, cards[0], 8, 32, 194, 112, "layout-reference");
-  drawPdfCard(pdf, cards[1], 8, 148, 194, 135, "layout-real");
+  const geometry = layoutPdfCardGeometry(pdf, cards[1].source);
+  drawPdfCard(pdf, cards[0], 8, 32, 194, geometry.referenceHeight, "layout-reference");
+  drawPdfCard(pdf, cards[1], 8, geometry.realY, 194, geometry.realHeight, `layout-real-${geometry.orientation}`);
   drawPdfFooter(pdf, "JUNTÉMONOS MÁS", "Diseño: Jorge Alcantar Aguiar & Enrique César Flores");
   return { pdf, filename: `Layout_${cleanFilename(label)}_${cleanFilename(store)}.pdf` };
 }
