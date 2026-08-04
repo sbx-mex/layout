@@ -108,10 +108,10 @@
         <span id="dateLabel" class="date-label"></span>
       </div>
 
-      <div class="reference-selector reference-selector--persistent pdf-hide" id="referenceSelector">
+      <div class="reference-selector reference-selector--collapsible pdf-hide hidden" id="referenceSelector">
             <div class="reference-selector__head">
               <div><span class="eyebrow">Catálogo dinámico</span><strong>Elige y compara sin perder de vista las opciones</strong></div>
-              <div class="catalog-state"><small id="catalogHint">Todas las opciones permanecen visibles</small></div>
+              <div class="catalog-state"><small id="catalogHint">Elige una opción para proyectarla</small></div>
             </div>
             <div class="reference-toolbar">
               <p id="activeReferenceMessage" class="active-reference-message" aria-live="polite">Referencia activa: ESP 01</p>
@@ -128,10 +128,14 @@
         <article class="block" id="theoryBlock">
           <div class="block-head">
             <div><span class="eyebrow">Referencia</span><h3 id="layoutTitle">ESP 01</h3></div>
-            <button id="zoomTheoryButton" class="button button--ghost button--compact pdf-hide" type="button">Ampliar</button>
+            <div class="reference-actions pdf-hide">
+              <button id="toggleCatalogButton" class="button button--ghost button--compact button--subtle" type="button" aria-expanded="false" aria-controls="referenceSelector">Ver opciones</button>
+              <button id="zoomTheoryButton" class="button button--ghost button--compact" type="button">Ampliar</button>
+            </div>
           </div>
           <button id="theoryImageButton" class="imgbox imgbox--button" type="button" aria-label="Ampliar layout de referencia">
             <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async">
+            <span id="swipeHint" class="swipe-hint pdf-hide" aria-hidden="true"><span>←</span> Desliza para cambiar <span>→</span></span>
           </button>
         </article>
 
@@ -193,7 +197,6 @@
           <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
         </div>
         <div class="sheet-actions__buttons">
-          <button id="editReferenceButton" class="button button--ghost" type="button">Cambiar referencia</button>
           <button id="exportButton" class="button button--export" type="button">Exportar Lay Out</button>
         </div>
       </div>

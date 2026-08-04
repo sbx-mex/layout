@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v13-persistent-reel-pdf-fit";
+const CACHE = "starbucks-layouts-v14-collapsible-catalog-swipe";
 const APP_SHELL = [
   "./",
   "./index.html",

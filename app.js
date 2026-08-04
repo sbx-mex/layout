@@ -16,6 +16,7 @@ let optionalAreas = [];
 let improvementAreas = [];
 let improvementReferences = [];
 let selectedVariant = 0;
+let catalogExpanded = false;
 let selectedImprovementReference = 0;
 let improvementItems = [];
 let improvementSequence = 1;
@@ -201,7 +202,8 @@ function renderRecentStations() {
 
 function renderCatalog() {
   const station = getStation();
-  $("referenceSelector").classList.toggle("hidden", station.optional);
+  $("referenceSelector").classList.toggle("hidden", station.optional || !catalogExpanded);
+  $("toggleCatalogButton").classList.toggle("hidden", station.optional || station.variants < 2);
   if (station.optional) return;
   selectedVariant = Math.max(0, Math.min(selectedVariant, station.variants - 1));
   renderCompareReferenceReel();
@@ -236,13 +238,30 @@ function renderCompareReferenceReel() {
       image: imagePath(index),
       label: variantLabel(index),
       active: index === selectedVariant,
-      onSelect: () => selectVariant(index)
+      onSelect: () => selectVariant(index, false, true)
     }));
   }
   $("comparePrevious").disabled = station.variants < 2;
   $("compareNext").disabled = station.variants < 2;
-  $("catalogHint").textContent = "Opciones siempre visibles";
+  $("catalogHint").textContent = "Elige una opción para proyectarla";
   $("activeReferenceMessage").textContent = `Referencia activa: ${variantLabel()}`;
+}
+
+function setCatalogExpanded(expanded, focus = false) {
+  const station = getStation();
+  catalogExpanded = Boolean(expanded) && !station.optional && station.variants > 1;
+  $("referenceSelector").classList.toggle("hidden", !catalogExpanded);
+  $("toggleCatalogButton").setAttribute("aria-expanded", String(catalogExpanded));
+  $("toggleCatalogButton").textContent = catalogExpanded ? "Ocultar opciones" : "Ver opciones";
+  if (catalogExpanded) {
+    renderCompareReferenceReel();
+    if (focus) {
+      requestAnimationFrame(() => {
+        $("referenceSelector").scrollIntoView({ behavior: "smooth", block: "nearest" });
+        $("compareReferenceReel").querySelector(".reel-thumb.active")?.focus({ preventScroll: true });
+      });
+    }
+  }
 }
 
 function renderMaxMinReferences() {
@@ -346,12 +365,13 @@ async function loadImprovementPhoto(file, id, kind) {
   } catch (error) { announce(error.message || "No fue posible abrir la imagen."); }
 }
 
-function selectVariant(index, focus = false) {
+function selectVariant(index, focus = false, collapseCatalog = false) {
   const station = getStation();
   if (!station.variants) return;
   selectedVariant = (Number(index) + station.variants) % station.variants;
   renderCatalog();
   updateView();
+  if (collapseCatalog) setCatalogExpanded(false);
   const active = $("compareReferenceReel").querySelector(".reel-thumb.active");
   if (window.matchMedia("(max-width: 620px)").matches) active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   if (focus) active?.focus();
@@ -767,6 +787,7 @@ function bindEvents() {
   $("storeName").addEventListener("input", updateView);
   $("stationSelect").addEventListener("change", () => {
     selectedVariant = 0;
+    setCatalogExpanded(false);
     clearAllPhotos();
     addRecentStation(getStation().code);
     renderCatalog();
@@ -774,6 +795,7 @@ function bindEvents() {
   });
   $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
+  $("toggleCatalogButton").addEventListener("click", () => setCatalogExpanded(!catalogExpanded, !catalogExpanded));
   $("compareReferenceReel").addEventListener("keydown", event => {
     if (event.key === "ArrowLeft") { event.preventDefault(); selectVariant(selectedVariant - 1, true); }
     if (event.key === "ArrowRight") { event.preventDefault(); selectVariant(selectedVariant + 1, true); }
@@ -853,8 +875,7 @@ function bindEvents() {
     jumpTo(button.dataset.jump);
   }));
   $("startButton").addEventListener("click", () => { setToolView("layout", false); jumpTo("configuracion"); });
-  $("continueButton").addEventListener("click", () => jumpTo("sheet"));
-  $("editReferenceButton").addEventListener("click", () => jumpTo("referenceSelector"));
+  $("continueButton").addEventListener("click", () => { setCatalogExpanded(false); jumpTo("sheet"); });
   $("exportButton").addEventListener("click", exportLayoutPdf);
   $("exportImprovementButton").addEventListener("click", exportImprovementPdf);
   $("zoomTheoryButton").addEventListener("click", openTheoryDialog);

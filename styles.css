@@ -38,13 +38,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,[t
 @media(max-width:620px){.compare{height:auto}.block{min-height:420px}.reference-reel,.maxmin-reel-row{grid-template-columns:34px minmax(0,1fr) 34px}.reel-arrow{width:34px;height:34px}.reel-thumb{flex-basis:96px}.reel-thumb img{height:58px}.improvement-module__head{align-items:stretch;flex-direction:column;padding:15px}.improvement-module__identity{align-items:flex-start}.improvement-icon{width:42px;height:42px;flex-basis:42px}.improvement-content{padding:12px}.maxmin-reference__viewer>button{height:240px}.maxmin-reference__reel .reel-thumb{flex-basis:112px}.maxmin-reference__reel .reel-thumb img{height:76px}.improvement-toolbar{grid-template-columns:1fr}.improvement-toolbar>.button{grid-column:auto}.improvement-photo__preview{height:235px}}
 /* Flujo de campo: un solo carrete y acciones fotográficas inequívocas */
 .reference-selector{margin-bottom:12px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:#f7faf8}
-.reference-selector--persistent{position:relative;z-index:2;margin-top:16px;margin-bottom:0;background:#fff;border-color:#bad7ca;box-shadow:0 6px 18px rgba(30,57,50,.06)}
+.reference-selector--collapsible{position:relative;z-index:2;margin-top:16px;margin-bottom:0;background:#fff;border-color:#bad7ca;box-shadow:0 6px 18px rgba(30,57,50,.06)}
 .reference-selector__head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .reference-selector__head strong{display:block;color:var(--green);font-size:16px}
 .reference-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:9px 10px;border-radius:11px;background:#eaf4ef}.active-reference-message{margin:0;color:var(--green-dark);font-size:12px;font-weight:850}.catalog-action{color:var(--muted);font-size:11px;font-weight:750}
 .reference-selector .reference-reel{margin-top:7px}
 .reference-selector .reel-thumb{flex-basis:124px;background:#fff}
 .reference-selector .reel-thumb img{height:70px}
+.reference-actions{display:flex;align-items:center;gap:7px}.button--subtle{border-color:transparent;background:#f1f7f4;color:var(--green);box-shadow:none}.button--subtle:hover{border-color:#bad7ca;background:#e7f3ed}.swipe-hint{position:absolute;left:50%;bottom:12px;z-index:2;display:flex;align-items:center;gap:7px;transform:translateX(-50%);padding:7px 12px;border:1px solid rgba(255,255,255,.72);border-radius:999px;background:rgba(30,57,50,.78);color:#fff;font-size:11px;font-weight:800;line-height:1;white-space:nowrap;pointer-events:none;backdrop-filter:blur(6px)}.swipe-hint span{font-size:14px}.imgbox--button{position:relative}
 .photo-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 .photo-actions .button{min-height:42px;padding:9px 10px}
 .button--photo{background:var(--green-bright)}
@@ -66,6 +67,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,[t
 .catalog-state{display:flex;align-items:flex-end;flex-direction:column;gap:2px;text-align:right}.catalog-state small{color:var(--muted);font-size:10px;font-weight:700}.reference-reel__track{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;overflow:visible}.reference-selector .reel-thumb{width:100%;min-width:0;flex:none}.reference-selector .reel-thumb img{height:68px;object-fit:contain}.reference-selector .reel-thumb.active{border-color:var(--green);background:#e8f4ee;box-shadow:inset 0 0 0 1px var(--green)}.reference-selector .reel-thumb:focus-visible{outline:3px solid #00a862;outline-offset:2px}.reference-selector .reel-arrow:not(:disabled){border-color:#9fc5b4}.reference-selector .reel-arrow:not(:disabled):active{transform:scale(.96)}
 
 @media(max-width:620px){.catalog-state small{display:none}.reference-toolbar{align-items:stretch;flex-direction:column}.active-reference-message{text-align:center}.catalog-action{text-align:center}.reference-reel__track{display:flex;overflow-x:auto}.reference-selector .reel-thumb{flex:0 0 104px;width:104px}.reference-reel{grid-template-columns:34px minmax(0,1fr) 34px}.footer-contact{text-align:left}}
+@media(min-width:851px){.swipe-hint{opacity:.88}.theoryBlock:hover .swipe-hint{opacity:1}}
+@media(max-width:620px){.reference-actions{gap:4px}.reference-actions .button{padding:7px 8px;font-size:10px}.swipe-hint{bottom:9px;padding:7px 10px}}
 
 /* Protección adicional para Guardar como PDF desde el navegador. */
 @media print{
