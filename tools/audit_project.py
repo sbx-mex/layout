@@ -29,9 +29,7 @@ GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
 OBSOLETE_FILES = ("README.txt",)
 VISUAL_SELECTOR_IDS = {
     "referenceSelector",
-    "variantCounter",
     "catalogHint",
-    "variantSelect",
     "activeReferenceMessage",
     "compareReferenceReel",
     "comparePrevious",
@@ -227,8 +225,12 @@ def main() -> int:
         errors.append("Debe existir exactamente un carrete de Lay Out")
     if "Todas las opciones permanecen visibles" not in html or "grid-template-columns:repeat(auto-fit" not in css:
         errors.append("El carrete no funciona como catálogo dinámico visible")
-    if 'id="variantSelect"' not in html or '$("variantSelect").addEventListener("change"' not in js:
-        errors.append("El selector directo no está sincronizado con el catálogo visual")
+    if 'id="variantSelect"' in html or 'id="variantCounter"' in html:
+        errors.append("Persisten la lista desplegable o el contador redundante del catálogo")
+    if '$("variantSelect")' in js or '$("variantCounter")' in js:
+        errors.append("app.js conserva dependencias del selector redundante")
+    if "Selecciona cualquier imagen para verla debajo" not in html:
+        errors.append("El catálogo no comunica que cada miniatura actualiza el modelo")
     if 'selectedVariant = (Number(index) + station.variants) % station.variants' not in js:
         errors.append("La navegación del catálogo no funciona en ciclo continuo")
     if "bindReferenceSwipe" not in js:

@@ -209,16 +209,10 @@ function createReelThumb({ image, label, active, onSelect }) {
 
 function renderCompareReferenceReel() {
   const reel = $("compareReferenceReel");
-  const select = $("variantSelect");
   const station = getStation();
   reel.replaceChildren();
-  select.replaceChildren();
   if (station.optional) return;
   for (let index = 0; index < station.variants; index += 1) {
-    const option = document.createElement("option");
-    option.value = String(index);
-    option.textContent = variantLabel(index);
-    select.append(option);
     reel.append(createReelThumb({
       image: imagePath(index),
       label: variantLabel(index),
@@ -226,11 +220,9 @@ function renderCompareReferenceReel() {
       onSelect: () => selectVariant(index)
     }));
   }
-  select.value = String(selectedVariant);
   $("comparePrevious").disabled = station.variants < 2;
   $("compareNext").disabled = station.variants < 2;
-  $("variantCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
-  $("catalogHint").textContent = `${station.variants} ${station.variants === 1 ? "modelo siempre visible" : "modelos siempre visibles"}`;
+  $("catalogHint").textContent = "Opciones siempre visibles";
   $("activeReferenceMessage").textContent = `Referencia activa: ${variantLabel()}`;
 }
 
@@ -689,10 +681,6 @@ function bindEvents() {
     addRecentStation(getStation().code);
     renderCatalog();
     updateView();
-  });
-  $("variantSelect").addEventListener("change", event => {
-    selectVariant(Number(event.target.value));
-    announce(`${variantLabel()} seleccionada.`);
   });
   $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
