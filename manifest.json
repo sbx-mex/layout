@@ -1,13 +1,16 @@
 {
-  "name": "STARBUCKS Layouts",
-  "short_name": "LayOut",
-  "description": "LayOut vs Acomodo Real",
+  "id": "./",
+  "name": "Starbucks Layouts Operativos",
+  "short_name": "Layouts",
+  "description": "Compara el layout de referencia con el acomodo real de cada estación.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7faf8",
   "theme_color": "#006241",
-  "orientation": "portrait",
+  "orientation": "any",
+  "lang": "es-MX",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "icons/icon-192.png",
