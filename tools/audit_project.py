@@ -27,6 +27,15 @@ REQUIRED = (
 )
 GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
 OBSOLETE_FILES = ("README.txt",)
+VISUAL_SELECTOR_IDS = {
+    "viewerImage",
+    "viewerPrevious",
+    "viewerNext",
+    "viewerCounter",
+    "variantDots",
+    "useLayoutButton",
+    "editLayoutButton",
+}
 
 
 def file_hash(path: Path) -> str:
@@ -161,6 +170,9 @@ def main() -> int:
     if duplicates:
         errors.append(f"IDs HTML duplicados: {', '.join(sorted(duplicates))}")
     html_ids = set(re.findall(r'\bid="([^"]+)"', html))
+    missing_visual_selector = sorted(VISUAL_SELECTOR_IDS - html_ids)
+    if missing_visual_selector:
+        errors.append(f"Selector visual incompleto: {', '.join(missing_visual_selector)}")
     missing_dom = sorted(referenced_dom_ids(js) - html_ids)
     if missing_dom:
         errors.append(f"app.js referencia controles HTML inexistentes: {', '.join(missing_dom)}")
@@ -174,6 +186,9 @@ def main() -> int:
         errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
     if "serviceWorker.register" not in js or '"sw.js"' not in js:
         errors.append("app.js no registra el service worker")
+    for behavior in ("renderActiveLayout", "openViewerDialog", "pointerup", "editLayoutButton"):
+        if behavior not in js:
+            errors.append(f"Falta comportamiento de navegación visual: {behavior}")
     for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json"):
         if shell_file not in service_worker:
             errors.append(f"El shell sin conexión no incluye {shell_file}")

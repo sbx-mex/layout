@@ -97,6 +97,28 @@
             <button id="nextVariant" class="icon-button" type="button" aria-label="Variante siguiente">→</button>
           </div>
         </div>
+        <div class="layout-viewer" aria-labelledby="activeLayoutTitle">
+          <div class="layout-viewer__visual">
+            <button id="viewerPrevious" class="viewer-arrow viewer-arrow--previous" type="button" aria-label="Ver layout anterior">←</button>
+            <button id="viewerImageButton" class="layout-viewer__image" type="button" aria-label="Ampliar el layout seleccionado">
+              <img id="viewerImage" alt="" decoding="async">
+              <span class="zoom-hint" aria-hidden="true">Ampliar</span>
+            </button>
+            <button id="viewerNext" class="viewer-arrow viewer-arrow--next" type="button" aria-label="Ver layout siguiente">→</button>
+          </div>
+          <div class="layout-viewer__details">
+            <div>
+              <span class="selection-badge"><span aria-hidden="true">✓</span> Selección activa</span>
+              <h3 id="activeLayoutTitle">ESP 01</h3>
+              <p id="activeLayoutDescription">Vista previa del layout que se utilizará en la comparación.</p>
+            </div>
+            <div class="layout-viewer__actions">
+              <span id="viewerCounter" class="viewer-counter" aria-live="polite">1 de 11</span>
+              <button id="useLayoutButton" class="button" type="button">Usar este layout</button>
+            </div>
+          </div>
+          <div id="variantDots" class="variant-dots" aria-label="Posición dentro de las variantes"></div>
+        </div>
         <div class="catalog" id="catalog" role="listbox" aria-label="Variantes de layout" tabindex="0"></div>
       </div>
 
@@ -190,7 +212,10 @@
           <span id="completionIcon" aria-hidden="true">○</span>
           <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
         </div>
-        <button id="exportButton" class="button button--export" type="button">Exportar PDF</button>
+        <div class="sheet-actions__buttons">
+          <button id="editLayoutButton" class="button button--ghost" type="button">Corregir selección</button>
+          <button id="exportButton" class="button button--export" type="button">Exportar PDF</button>
+        </div>
       </div>
     </section>
   </main>

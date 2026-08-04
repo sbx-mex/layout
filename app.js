@@ -18,6 +18,8 @@ let installPrompt = null;
 let toastTimer = null;
 let saveTimer = null;
 let preferences = {};
+let viewerPointerStart = null;
+let viewerWasDragged = false;
 
 function getCampaign() {
   return campaigns.find(item => item.id === $("campaignSelect").value) || campaigns[0];
@@ -199,6 +201,33 @@ function renderCatalog() {
   $("variantCounter").textContent = `${selectedVariant + 1} / ${station.variants}`;
   $("previousVariant").disabled = selectedVariant === 0;
   $("nextVariant").disabled = selectedVariant === station.variants - 1;
+  renderActiveLayout();
+}
+
+function renderActiveLayout() {
+  const station = getStation();
+  if (station.optional) return;
+  const label = variantLabel();
+  const image = $("viewerImage");
+  image.alt = `Vista previa del layout ${label}`;
+  image.src = imagePath();
+  image.onerror = () => { image.onerror = null; image.src = placeholder(label); };
+  $("activeLayoutTitle").textContent = label;
+  $("activeLayoutDescription").textContent = `${station.name} · Esta referencia se mostrará en la comparación y en el PDF.`;
+  $("viewerCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
+  $("viewerPrevious").disabled = selectedVariant === 0;
+  $("viewerNext").disabled = selectedVariant === station.variants - 1;
+  const dots = $("variantDots");
+  dots.replaceChildren();
+  for (let index = 0; index < station.variants; index += 1) {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = `variant-dot${index === selectedVariant ? " active" : ""}`;
+    dot.setAttribute("aria-label", `Ver ${variantLabel(index)}`);
+    dot.setAttribute("aria-current", index === selectedVariant ? "true" : "false");
+    dot.addEventListener("click", () => selectVariant(index));
+    dots.append(dot);
+  }
 }
 
 function selectVariant(index, focus = false) {
@@ -331,6 +360,17 @@ function openTheoryDialog() {
   if (typeof dialog.showModal === "function") dialog.showModal();
 }
 
+function openViewerDialog() {
+  if (viewerWasDragged) {
+    viewerWasDragged = false;
+    return;
+  }
+  const dialog = $("imageDialog");
+  $("dialogImage").src = $("viewerImage").src;
+  $("dialogTitle").textContent = `Layout de referencia · ${variantLabel()}`;
+  if (typeof dialog.showModal === "function") dialog.showModal();
+}
+
 function loadPdfLibrary() {
   if (window.html2pdf) return Promise.resolve();
   return new Promise((resolve, reject) => {
@@ -402,6 +442,24 @@ function bindEvents() {
   });
   $("previousVariant").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("nextVariant").addEventListener("click", () => selectVariant(selectedVariant + 1));
+  $("viewerPrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
+  $("viewerNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
+  $("viewerImageButton").addEventListener("click", openViewerDialog);
+  $("viewerImageButton").addEventListener("pointerdown", event => { viewerPointerStart = event.clientX; });
+  $("viewerImageButton").addEventListener("pointerup", event => {
+    if (viewerPointerStart === null) return;
+    const distance = event.clientX - viewerPointerStart;
+    viewerPointerStart = null;
+    if (Math.abs(distance) < 55) return;
+    event.preventDefault();
+    viewerWasDragged = true;
+    selectVariant(selectedVariant + (distance < 0 ? 1 : -1));
+  });
+  $("viewerImageButton").addEventListener("pointercancel", () => { viewerPointerStart = null; });
+  $("useLayoutButton").addEventListener("click", () => {
+    announce(`${variantLabel()} listo para comparar.`);
+    jumpTo("sheet");
+  });
   $("catalog").addEventListener("keydown", event => {
     const keys = { ArrowLeft: -1, ArrowRight: 1 };
     if (event.key in keys) { event.preventDefault(); selectVariant(selectedVariant + keys[event.key], true); }
@@ -433,6 +491,7 @@ function bindEvents() {
   $("startButton").addEventListener("click", () => jumpTo("configuracion"));
   $("continueButton").addEventListener("click", () => jumpTo("sheet"));
   $("changeSelectionButton").addEventListener("click", () => jumpTo("configuracion"));
+  $("editLayoutButton").addEventListener("click", () => jumpTo("variantNavigation"));
   $("exportButton").addEventListener("click", exportPdf);
   $("mobileExportButton").addEventListener("click", exportPdf);
   $("zoomTheoryButton").addEventListener("click", openTheoryDialog);
