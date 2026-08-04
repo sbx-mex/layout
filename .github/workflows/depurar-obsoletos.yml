@@ -1,4 +1,4 @@
-name: Depurar archivos obsoletos
+name: Depurar archivos redundantes
 
 on:
   workflow_dispatch:
@@ -52,6 +52,12 @@ jobs:
       - name: Eliminar solo residuos comprobados
         if: inputs.accion == 'ELIMINAR'
         run: python tools/audit_project.py --prune --report "${RUNNER_TEMP}/depuracion.json"
+
+      - name: Mostrar alcance exacto
+        if: inputs.accion == 'ELIMINAR'
+        run: |
+          git status --short
+          echo "Solo se registrarán recursos huérfanos declarados por la auditoría y residuos temporales permitidos."
 
       - name: Validar después de la limpieza
         if: inputs.accion == 'ELIMINAR'
