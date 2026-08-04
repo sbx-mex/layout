@@ -4,7 +4,7 @@
   "updatedAt": "2026-08-04",
   "brand": {
     "product": "Starbucks Layouts",
-    "purpose": "Layout vs. acomodo real",
+    "purpose": "Layout + comparativo de mejora",
     "initiative": "JUNTÉMONOS MÁS"
   },
   "campaigns": [
@@ -44,5 +44,28 @@
     "Barra - Refrigerador 1 Puerta",
     "Barra - Gaveta",
     "Otra Área"
-  ]
+  ],
+  "improvementModule": {
+    "title": "Comparativo de mejora Max–Min",
+    "areas": [
+      "BOH - Rack",
+      "BOH - Refrigerador",
+      "BOH - Congelador",
+      "Barra - Gaveta",
+      "Barra - Refrigerador",
+      "Rack de Leches",
+      "Rack de Jarabes",
+      "Rack de Vasos y Tapas",
+      "Rack de Polvos",
+      "Otro espacio"
+    ],
+    "references": [
+      { "id": "maxmin", "title": "Estándar Max–Min", "src": "assets/maxmin/referencia-maxmin.png" },
+      { "id": "layout", "title": "Layout de ejemplo", "src": "assets/maxmin/layout_ejemplo.jpeg" },
+      { "id": "back", "title": "Organización de Back", "src": "assets/maxmin/limpieza_back.jpeg" },
+      { "id": "mejora-1", "title": "Ejemplo de mejora 1", "src": "assets/maxmin/limpieza_ejemplo_1.jpeg" },
+      { "id": "mejora-2", "title": "Ejemplo de mejora 2", "src": "assets/maxmin/limpieza_ejemplo_2.jpeg" },
+      { "id": "mejora-3", "title": "Ejemplo de mejora 3", "src": "assets/maxmin/limpieza_ejemplo_3.jpeg" }
+    ]
+  }
 }

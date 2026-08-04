@@ -35,6 +35,13 @@ VISUAL_SELECTOR_IDS = {
     "variantDots",
     "useLayoutButton",
     "editLayoutButton",
+    "compareReferenceReel",
+    "comparePrevious",
+    "compareNext",
+    "toggleImprovementButton",
+    "improvementContent",
+    "maxminReferenceReel",
+    "improvementList",
 }
 
 
@@ -70,9 +77,12 @@ def validate_catalog(data: dict, errors: list[str]) -> set[str]:
     categories = data.get("stationCategories")
     stations = data.get("stations")
     optional_areas = data.get("optionalAreas")
+    improvement = data.get("improvementModule")
     for name, value in (("campaigns", campaigns), ("stationCategories", categories), ("stations", stations), ("optionalAreas", optional_areas)):
         if not isinstance(value, list) or not value:
             errors.append(f"El catálogo requiere una lista no vacía: {name}")
+    if not isinstance(improvement, dict):
+        errors.append("El catálogo requiere improvementModule")
     if errors:
         return set()
 
@@ -111,6 +121,27 @@ def validate_catalog(data: dict, errors: list[str]) -> set[str]:
         errors.append("Debe existir exactamente una opción de evidencias libres")
     if len(optional_areas) != len(set(optional_areas)):
         errors.append("Existen áreas opcionales duplicadas")
+    improvement_areas = improvement.get("areas", [])
+    references = improvement.get("references", [])
+    if not improvement.get("title") or not isinstance(improvement_areas, list) or not improvement_areas:
+        errors.append("improvementModule requiere título y áreas")
+    if len(improvement_areas) != len(set(improvement_areas)):
+        errors.append("Existen áreas Max–Min duplicadas")
+    if not isinstance(references, list) or not references:
+        errors.append("improvementModule requiere referencias visuales")
+    reference_ids: list[str] = []
+    for reference in references:
+        if not all(reference.get(key) for key in ("id", "title", "src")):
+            errors.append("Cada referencia Max–Min requiere id, title y src")
+            continue
+        reference_ids.append(reference["id"])
+        source = reference["src"]
+        if not source.startswith("assets/maxmin/"):
+            errors.append(f"Referencia Max–Min fuera de assets/maxmin: {source}")
+        else:
+            expected_assets.add(source.removeprefix("assets/"))
+    if len(reference_ids) != len(set(reference_ids)):
+        errors.append("Existen IDs Max–Min duplicados")
     return expected_assets
 
 
@@ -118,7 +149,7 @@ def remove_safe_residue(unused_assets: list[Path]) -> list[str]:
     removed: list[str] = []
     for path in unused_assets:
         resolved = path.resolve()
-        if resolved.parent != ASSETS.resolve() or not path.is_file():
+        if not resolved.is_relative_to(ASSETS.resolve()) or not path.is_file():
             continue
         path.unlink()
         removed.append(path.relative_to(ROOT).as_posix())
@@ -158,7 +189,7 @@ def main() -> int:
     service_worker = (ROOT / "sw.js").read_text(encoding="utf-8")
     expected_assets = validate_catalog(catalog, errors)
 
-    actual_assets = {path.name: path for path in ASSETS.iterdir() if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}}
+    actual_assets = {path.relative_to(ASSETS).as_posix(): path for path in ASSETS.rglob("*") if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}}
     missing = sorted(expected_assets - actual_assets.keys())
     unused_names = sorted(actual_assets.keys() - expected_assets)
     unused_assets = [actual_assets[name] for name in unused_names]
@@ -178,6 +209,11 @@ def main() -> int:
         errors.append(f"app.js referencia controles HTML inexistentes: {', '.join(missing_dom)}")
     if re.search(r'\son\w+\s*=', html, flags=re.IGNORECASE):
         errors.append("Se detectaron eventos inline; deben administrarse desde app.js")
+    forbidden_sharing = ("sharepoint", "compartir pdf", "abrir carpeta de carga")
+    combined_source = f"{html}\n{js}".lower()
+    detected_sharing = [term for term in forbidden_sharing if term in combined_source]
+    if detected_sharing:
+        errors.append(f"Persisten enlaces o acciones compartidas: {', '.join(detected_sharing)}")
     if '<html lang="es">' not in html or "skip-link" not in html:
         errors.append("Faltan metadatos o navegación accesible")
     if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
@@ -186,7 +222,7 @@ def main() -> int:
         errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
     if "serviceWorker.register" not in js or '"sw.js"' not in js:
         errors.append("app.js no registra el service worker")
-    for behavior in ("renderActiveLayout", "openViewerDialog", "pointerup", "editLayoutButton"):
+    for behavior in ("renderActiveLayout", "renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "pointerup", "editLayoutButton"):
         if behavior not in js:
             errors.append(f"Falta comportamiento de navegación visual: {behavior}")
     for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json"):
@@ -202,8 +238,9 @@ def main() -> int:
             errors.append(f"Icono del manifest inexistente: {icon.get('src')}")
 
     by_hash: dict[str, list[str]] = defaultdict(list)
-    for path in sorted(ASSETS.glob("*.jpg")):
-        by_hash[file_hash(path)].append(path.name)
+    for path in sorted(ASSETS.rglob("*")):
+        if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
+            by_hash[file_hash(path)].append(path.relative_to(ASSETS).as_posix())
     duplicate_groups = [names for names in by_hash.values() if len(names) > 1]
     removed = remove_safe_residue(unused_assets) if args.prune and not errors else []
 
@@ -212,7 +249,9 @@ def main() -> int:
         "schemaVersion": catalog.get("schemaVersion"),
         "campaigns": len(catalog.get("campaigns", [])),
         "stations": len(catalog.get("stations", [])),
-        "layouts": len(expected_assets - {"juntemonos-mas.png"}),
+        "layouts": sum(station.get("variants", 0) for station in catalog.get("stations", [])),
+        "maxMinReferences": len(catalog.get("improvementModule", {}).get("references", [])),
+        "maxMinAreas": len(catalog.get("improvementModule", {}).get("areas", [])),
         "missingAssets": missing,
         "unusedAssets": unused_names,
         "obsoleteFiles": obsolete_files,
@@ -231,6 +270,7 @@ def main() -> int:
     print("AUDITORÍA APROBADA")
     print(f"- {report['layouts']} layouts declarados en JSON y presentes")
     print(f"- {report['stations']} opciones de estación y {report['campaigns']} campañas")
+    print(f"- Módulo Max–Min: {report['maxMinReferences']} referencias y {report['maxMinAreas']} áreas")
     print(f"- {len(unused_names)} recursos huérfanos y {len(obsolete_files)} archivos obsoletos detectados")
     print(f"- {len(removed)} residuos eliminados de forma segura")
     print(f"- {len(duplicate_groups)} grupos idénticos conservados por tener referencias distintas")

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#006241">
-  <meta name="description" content="Comparador operativo de layout de referencia y acomodo real para tiendas.">
+  <meta name="description" content="Herramienta operativa para comparar layouts y documentar mejoras Max–Min en tienda.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -25,7 +25,7 @@
     <div class="topbar__inner">
       <a class="brand" href="#inicio" aria-label="Ir al inicio">
         <span class="brand__mark" aria-hidden="true">✦</span>
-        <span><strong>Starbucks Layouts</strong><small>Layout vs. acomodo real</small></span>
+        <span><strong>Starbucks Layouts</strong><small>Layout + comparativo de mejora</small></span>
       </a>
       <div class="status-group">
         <span id="saveStatus" class="status status--saved" role="status" aria-live="polite">Listo</span>
@@ -44,8 +44,8 @@
     <section class="hero" id="inicio" aria-labelledby="heroTitle">
       <div class="hero__copy">
         <span class="eyebrow">Herramienta operativa</span>
-        <h1 id="heroTitle">Del layout de referencia al acomodo real</h1>
-        <p>Selecciona la estación, compara visualmente y genera una evidencia clara para alinear al equipo.</p>
+        <h1 id="heroTitle">Del layout de referencia a una mejora visible</h1>
+        <p>Compara la estación con su modelo y, cuando lo necesites, documenta mejoras Max–Min en Back, gavetas o cualquier espacio.</p>
         <div class="hero__actions">
           <button id="startButton" class="button" type="button">Iniciar revisión</button>
           <span id="catalogSummary" class="catalog-summary">Cargando catálogo…</span>
@@ -153,7 +153,12 @@
           <button id="theoryImageButton" class="imgbox imgbox--button" type="button" aria-label="Ampliar layout de referencia">
             <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async">
           </button>
-          <p class="helper pdf-hide">Toca la imagen para revisar el detalle.</p>
+          <div class="reference-reel pdf-hide" aria-label="Carrete de referencias de la estación">
+            <button id="comparePrevious" class="reel-arrow" type="button" aria-label="Referencia anterior">←</button>
+            <div id="compareReferenceReel" class="reference-reel__track" role="listbox" tabindex="0"></div>
+            <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente">→</button>
+          </div>
+          <p class="helper pdf-hide">Recorre el carrete: la referencia activa se actualiza en el modelo y en el PDF.</p>
         </article>
 
         <article class="block" id="realBlock">
@@ -206,6 +211,56 @@
           </div>
         </article>
       </div>
+
+      <section class="improvement-module pdf-section" id="improvementModule" aria-labelledby="improvementTitle">
+        <div class="improvement-module__head">
+          <div class="improvement-module__identity">
+            <span class="improvement-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3M2 19h20"/></svg>
+            </span>
+            <div>
+              <span class="eyebrow">Complemento operativo opcional</span>
+              <h2 id="improvementTitle">Comparativo de mejora Max–Min</h2>
+              <p>Documenta el antes y después de Back, gavetas, racks u otros espacios sin salir de la revisión.</p>
+            </div>
+          </div>
+          <button id="toggleImprovementButton" class="button button--ghost pdf-hide" type="button" aria-expanded="false" aria-controls="improvementContent">Agregar comparativo</button>
+        </div>
+
+        <div id="improvementContent" class="improvement-content hidden">
+          <div class="maxmin-reference pdf-hide">
+            <div class="maxmin-reference__viewer">
+              <button id="maxminReferenceButton" type="button" aria-label="Ampliar referencia Max–Min">
+                <img id="maxminReferenceImage" alt="Referencia visual Max–Min" decoding="async">
+              </button>
+              <div><strong id="maxminReferenceTitle">Referencia Max–Min</strong><span id="maxminReferenceCounter"></span></div>
+            </div>
+            <div class="maxmin-reel-row">
+              <button id="maxminPrevious" class="reel-arrow" type="button" aria-label="Referencia Max–Min anterior">←</button>
+              <div id="maxminReferenceReel" class="maxmin-reference__reel" role="listbox" tabindex="0"></div>
+              <button id="maxminNext" class="reel-arrow" type="button" aria-label="Referencia Max–Min siguiente">→</button>
+            </div>
+          </div>
+
+          <div class="improvement-toolbar pdf-hide">
+            <div class="field">
+              <label for="improvementArea">Espacio a mejorar</label>
+              <select id="improvementArea"></select>
+            </div>
+            <div class="field">
+              <label for="improvementCustomArea">Nombre específico</label>
+              <input id="improvementCustomArea" maxlength="80" placeholder="Ej. Gaveta de tapas">
+            </div>
+            <button id="addImprovementButton" class="button" type="button">Agregar espacio</button>
+          </div>
+
+          <div id="improvementList" class="improvement-list" aria-live="polite"></div>
+          <div id="improvementEmpty" class="improvement-empty pdf-hide">
+            <strong>Agrega el primer espacio</strong>
+            <span>El comparativo mostrará Antes, Después y una observación breve.</span>
+          </div>
+        </div>
+      </section>
 
       <div class="sheet-actions pdf-hide">
         <div class="completion">

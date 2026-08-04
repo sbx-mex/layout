@@ -13,7 +13,13 @@ let catalogData = null;
 let campaigns = [];
 let stations = [];
 let optionalAreas = [];
+let improvementAreas = [];
+let improvementReferences = [];
 let selectedVariant = 0;
+let selectedImprovementReference = 0;
+let improvementItems = [];
+let improvementSequence = 1;
+let improvementEnabled = false;
 let installPrompt = null;
 let toastTimer = null;
 let saveTimer = null;
@@ -49,6 +55,10 @@ function cleanFilename(value) {
   return String(value || "Tienda").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9_-]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 64);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+}
+
 function formatDate() {
   return new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", year: "numeric" }).format(new Date());
 }
@@ -78,13 +88,15 @@ async function loadCatalogData() {
   const response = await fetch(DATA_URL, { cache: "no-cache" });
   if (!response.ok) throw new Error(`No fue posible cargar el catálogo (${response.status}).`);
   const data = await response.json();
-  if (data.schemaVersion !== 1 || !Array.isArray(data.campaigns) || !Array.isArray(data.stations) || !Array.isArray(data.optionalAreas)) {
+  if (data.schemaVersion !== 1 || !Array.isArray(data.campaigns) || !Array.isArray(data.stations) || !Array.isArray(data.optionalAreas) || !Array.isArray(data.improvementModule?.areas) || !Array.isArray(data.improvementModule?.references)) {
     throw new Error("El catálogo JSON no cumple el esquema esperado.");
   }
   catalogData = data;
   campaigns = data.campaigns;
   stations = data.stations;
   optionalAreas = data.optionalAreas;
+  improvementAreas = data.improvementModule.areas;
+  improvementReferences = data.improvementModule.references;
 }
 
 function populateControls() {
@@ -99,6 +111,7 @@ function populateControls() {
     $("optSelect1").add(new Option(area, area));
     $("optSelect2").add(new Option(area, area));
   });
+  improvementAreas.forEach(area => $("improvementArea").add(new Option(area, area)));
   const layoutCount = stations.reduce((total, station) => total + station.variants, 0);
   $("catalogSummary").textContent = `${stations.length - 1} estaciones · ${layoutCount} layouts`;
 }
@@ -204,6 +217,135 @@ function renderCatalog() {
   renderActiveLayout();
 }
 
+function createReelThumb({ image, label, active, onSelect }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `reel-thumb${active ? " active" : ""}`;
+  button.setAttribute("role", "option");
+  button.setAttribute("aria-selected", String(active));
+  button.setAttribute("aria-label", `Ver ${label}`);
+  const img = document.createElement("img");
+  img.src = image;
+  img.alt = "";
+  img.loading = "lazy";
+  img.decoding = "async";
+  const caption = document.createElement("span");
+  caption.textContent = label;
+  button.append(img, caption);
+  button.addEventListener("click", onSelect);
+  return button;
+}
+
+function renderCompareReferenceReel() {
+  const reel = $("compareReferenceReel");
+  const station = getStation();
+  reel.replaceChildren();
+  if (station.optional) return;
+  for (let index = 0; index < station.variants; index += 1) {
+    reel.append(createReelThumb({
+      image: imagePath(index),
+      label: variantLabel(index),
+      active: index === selectedVariant,
+      onSelect: () => selectVariant(index)
+    }));
+  }
+  $("comparePrevious").disabled = selectedVariant === 0;
+  $("compareNext").disabled = selectedVariant === station.variants - 1;
+  requestAnimationFrame(() => reel.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "center" }));
+}
+
+function renderMaxMinReferences() {
+  const reel = $("maxminReferenceReel");
+  reel.replaceChildren();
+  selectedImprovementReference = Math.max(0, Math.min(selectedImprovementReference, improvementReferences.length - 1));
+  improvementReferences.forEach((reference, index) => {
+    reel.append(createReelThumb({
+      image: reference.src,
+      label: reference.title,
+      active: index === selectedImprovementReference,
+      onSelect: () => selectImprovementReference(index)
+    }));
+  });
+  const active = improvementReferences[selectedImprovementReference];
+  $("maxminReferenceImage").src = active.src;
+  $("maxminReferenceImage").alt = active.title;
+  $("maxminReferenceTitle").textContent = active.title;
+  $("maxminReferenceCounter").textContent = `${selectedImprovementReference + 1} de ${improvementReferences.length}`;
+  $("maxminPrevious").disabled = selectedImprovementReference === 0;
+  $("maxminNext").disabled = selectedImprovementReference === improvementReferences.length - 1;
+  requestAnimationFrame(() => reel.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "center" }));
+}
+
+function selectImprovementReference(index) {
+  selectedImprovementReference = Math.max(0, Math.min(index, improvementReferences.length - 1));
+  renderMaxMinReferences();
+}
+
+function improvementAreaName() {
+  return $("improvementCustomArea").value.trim() || $("improvementArea").value || "Espacio operativo";
+}
+
+function improvementReady() {
+  return !improvementEnabled || (improvementItems.length > 0 && improvementItems.every(item => item.before && item.after));
+}
+
+function toggleImprovement(force) {
+  improvementEnabled = typeof force === "boolean" ? force : !improvementEnabled;
+  $("improvementContent").classList.toggle("hidden", !improvementEnabled);
+  $("toggleImprovementButton").setAttribute("aria-expanded", String(improvementEnabled));
+  $("toggleImprovementButton").textContent = improvementEnabled ? "Cerrar comparativo" : "Agregar comparativo";
+  if (improvementEnabled && improvementItems.length === 0) addImprovement();
+  updateCompletion();
+}
+
+function addImprovement() {
+  improvementItems.push({ id: improvementSequence++, area: improvementAreaName(), before: null, after: null, observation: "" });
+  $("improvementCustomArea").value = "";
+  renderImprovementList();
+  updateCompletion();
+}
+
+function improvementPhoto(item, kind, label) {
+  const source = item[kind];
+  return `<div class="improvement-photo${source ? " has-photo" : ""}">
+    <div class="improvement-photo__head"><strong>${label}</strong>${source ? `<button class="button button--text" type="button" data-improvement-clear="${kind}" data-improvement-id="${item.id}">Quitar</button>` : ""}</div>
+    <div class="improvement-photo__preview">${source ? `<img src="${source}" alt="${label} de ${escapeHtml(item.area)}">` : `<span aria-hidden="true">▣</span><small>Sin evidencia</small>`}</div>
+    <div class="improvement-photo__actions pdf-hide">
+      <label class="button button--ghost">Cámara<input class="hidden" type="file" accept="image/*" capture="environment" data-improvement-file="${kind}" data-improvement-id="${item.id}"></label>
+      <label class="button button--ghost">Galería<input class="hidden" type="file" accept="image/*" data-improvement-file="${kind}" data-improvement-id="${item.id}"></label>
+    </div>
+  </div>`;
+}
+
+function renderImprovementList() {
+  $("improvementEmpty").classList.toggle("hidden", improvementItems.length > 0);
+  $("improvementList").innerHTML = improvementItems.map((item, index) => `
+    <article class="improvement-card" data-improvement-card="${item.id}">
+      <div class="improvement-card__head">
+        <div><span class="eyebrow">Espacio ${index + 1}</span><input aria-label="Nombre del espacio ${index + 1}" value="${escapeHtml(item.area)}" maxlength="80" data-improvement-area="${item.id}"></div>
+        <button class="button button--danger pdf-hide" type="button" data-improvement-remove="${item.id}">Eliminar</button>
+      </div>
+      <div class="improvement-photos">
+        ${improvementPhoto(item, "before", "Antes")}
+        ${improvementPhoto(item, "after", "Después")}
+      </div>
+      <label class="improvement-note">Observación de mejora
+        <textarea rows="2" maxlength="280" data-improvement-note="${item.id}" placeholder="Ej. Máximos visibles, producto identificado y acceso más rápido.">${escapeHtml(item.observation)}</textarea>
+      </label>
+    </article>`).join("");
+}
+
+async function loadImprovementPhoto(file, id, kind) {
+  const item = improvementItems.find(candidate => candidate.id === id);
+  if (!item || !file) return;
+  try {
+    item[kind] = await optimizeImage(file);
+    renderImprovementList();
+    updateCompletion();
+    announce(`Evidencia ${kind === "before" ? "Antes" : "Después"} cargada.`);
+  } catch (error) { announce(error.message || "No fue posible abrir la imagen."); }
+}
+
 function renderActiveLayout() {
   const station = getStation();
   if (station.optional) return;
@@ -245,7 +387,8 @@ function hasPhoto(target) {
 }
 
 function reviewReady() {
-  return getStation().optional ? hasPhoto("opt1") && hasPhoto("opt2") : hasPhoto("real");
+  const layoutReady = getStation().optional ? hasPhoto("opt1") && hasPhoto("opt2") : hasPhoto("real");
+  return layoutReady && improvementReady();
 }
 
 function updateProgress() {
@@ -261,8 +404,9 @@ function updateProgress() {
 function updateCompletion() {
   const station = getStation();
   const ready = reviewReady();
-  $("completionTitle").textContent = ready ? "Comparación lista para exportar" : station.optional ? "Agrega las dos evidencias" : "Agrega la evidencia real";
-  $("completionText").textContent = ready ? "Revisa el contenido y genera el PDF." : "Puedes exportar ahora o completar la evidencia primero.";
+  const improvementPending = improvementEnabled && !improvementReady();
+  $("completionTitle").textContent = ready ? "Comparación lista para exportar" : improvementPending ? "Completa el Antes y Después" : station.optional ? "Agrega las dos evidencias" : "Agrega la evidencia real";
+  $("completionText").textContent = ready ? "Revisa el contenido y genera el PDF." : improvementPending ? "El comparativo Max–Min está activo y tiene evidencia pendiente." : "Puedes exportar ahora o completar la evidencia primero.";
   $("completionIcon").textContent = ready ? "✓" : "○";
   $("completionIcon").classList.toggle("ready", ready);
   $("photoStatus").textContent = hasPhoto("real") ? "Lista" : "Pendiente";
@@ -295,6 +439,7 @@ function updateView() {
     $("theoryImg").src = imagePath();
     $("theoryImg").onerror = () => { $("theoryImg").onerror = null; $("theoryImg").src = placeholder(label); };
   }
+  renderCompareReferenceReel();
   document.title = `Layout · ${label} · ${store}`;
   savePreferences();
   updateCompletion();
@@ -401,10 +546,8 @@ async function exportPdf() {
       image: { type: "jpeg", quality: .96 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["avoid-all"] }
+      pagebreak: { mode: ["css", "legacy"], avoid: [".block", ".improvement-card"] }
     }).from(sheet).toPdf();
-    const pdf = await worker.get("pdf");
-    for (let page = pdf.internal.getNumberOfPages(); page > 1; page -= 1) pdf.deletePage(page);
     await worker.save();
     announce("PDF generado correctamente.");
   } catch (error) {
@@ -444,6 +587,8 @@ function bindEvents() {
   $("nextVariant").addEventListener("click", () => selectVariant(selectedVariant + 1));
   $("viewerPrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("viewerNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
+  $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
+  $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
   $("viewerImageButton").addEventListener("click", openViewerDialog);
   $("viewerImageButton").addEventListener("pointerdown", event => { viewerPointerStart = event.clientX; });
   $("viewerImageButton").addEventListener("pointerup", event => {
@@ -465,6 +610,44 @@ function bindEvents() {
     if (event.key in keys) { event.preventDefault(); selectVariant(selectedVariant + keys[event.key], true); }
     if (event.key === "Home") { event.preventDefault(); selectVariant(0, true); }
     if (event.key === "End") { event.preventDefault(); selectVariant(getStation().variants - 1, true); }
+  });
+  $("compareReferenceReel").addEventListener("keydown", event => {
+    if (event.key === "ArrowLeft") { event.preventDefault(); selectVariant(selectedVariant - 1, true); }
+    if (event.key === "ArrowRight") { event.preventDefault(); selectVariant(selectedVariant + 1, true); }
+  });
+  $("toggleImprovementButton").addEventListener("click", () => toggleImprovement());
+  $("addImprovementButton").addEventListener("click", addImprovement);
+  $("maxminPrevious").addEventListener("click", () => selectImprovementReference(selectedImprovementReference - 1));
+  $("maxminNext").addEventListener("click", () => selectImprovementReference(selectedImprovementReference + 1));
+  $("maxminReferenceButton").addEventListener("click", () => {
+    const active = improvementReferences[selectedImprovementReference];
+    $("dialogImage").src = active.src;
+    $("dialogTitle").textContent = active.title;
+    if (typeof $("imageDialog").showModal === "function") $("imageDialog").showModal();
+  });
+  $("maxminReferenceReel").addEventListener("keydown", event => {
+    if (event.key === "ArrowLeft") { event.preventDefault(); selectImprovementReference(selectedImprovementReference - 1); }
+    if (event.key === "ArrowRight") { event.preventDefault(); selectImprovementReference(selectedImprovementReference + 1); }
+  });
+  $("improvementList").addEventListener("click", event => {
+    const remove = event.target.closest("[data-improvement-remove]");
+    const clear = event.target.closest("[data-improvement-clear]");
+    if (remove) improvementItems = improvementItems.filter(item => item.id !== Number(remove.dataset.improvementRemove));
+    if (clear) {
+      const item = improvementItems.find(candidate => candidate.id === Number(clear.dataset.improvementId));
+      if (item) item[clear.dataset.improvementClear] = null;
+    }
+    if (remove || clear) { renderImprovementList(); updateCompletion(); }
+  });
+  $("improvementList").addEventListener("input", event => {
+    const areaId = Number(event.target.dataset.improvementArea);
+    const noteId = Number(event.target.dataset.improvementNote);
+    if (areaId) improvementItems.find(item => item.id === areaId).area = event.target.value;
+    if (noteId) improvementItems.find(item => item.id === noteId).observation = event.target.value;
+  });
+  $("improvementList").addEventListener("change", event => {
+    if (!event.target.matches("[data-improvement-file]")) return;
+    loadImprovementPhoto(event.target.files[0], Number(event.target.dataset.improvementId), event.target.dataset.improvementFile);
   });
   [1, 2].forEach(number => {
     $(`optSelect${number}`).addEventListener("change", event => {
@@ -510,9 +693,17 @@ function bindEvents() {
     $("optName1").value = optionalAreas[0];
     $("optName2").value = optionalAreas[1];
     selectedVariant = 0;
+    improvementItems = [];
+    improvementEnabled = false;
+    improvementSequence = 1;
+    $("improvementContent").classList.add("hidden");
+    $("toggleImprovementButton").setAttribute("aria-expanded", "false");
+    $("toggleImprovementButton").textContent = "Agregar comparativo";
+    renderImprovementList();
     renderRecentStations();
     clearAllPhotos();
     renderCatalog();
+    renderMaxMinReferences();
     updateView();
     announce("Revisión reiniciada.");
   });
@@ -550,6 +741,8 @@ async function init() {
     restorePreferences();
     bindEvents();
     renderCatalog();
+    renderMaxMinReferences();
+    renderImprovementList();
     updateView();
     updateNetworkStatus();
     registerServiceWorker();

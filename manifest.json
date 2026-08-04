@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Starbucks Layouts Operativos",
+  "name": "Starbucks Layouts + Mejora",
   "short_name": "Layouts",
-  "description": "Guía operativa para comparar el layout de referencia con el acomodo real de cada estación.",
+  "description": "Guía operativa para comparar layouts y documentar mejoras Max–Min en tienda.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

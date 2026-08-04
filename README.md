@@ -1,20 +1,21 @@
-# Starbucks Layouts
+# Starbucks Layouts + Comparativo de Mejora
 
-Herramienta operativa para comparar el layout de referencia de una estación con su acomodo real y exportar una evidencia en PDF.
+Herramienta operativa para comparar el layout de referencia con el acomodo real y, cuando aplique, documentar mejoras Max–Min en Back, gavetas, racks u otros espacios.
 
 ## Recorrido operativo
 
 1. Captura la tienda y selecciona campaña y estación.
-2. Elige la variante del layout de referencia.
+2. Elige la variante desde el carrete visual; la imagen activa se sincroniza con el modelo.
 3. Toma, adjunta o arrastra la fotografía del acomodo real.
 4. Amplía el layout si necesitas revisar detalles.
-5. Exporta la comparación en PDF.
+5. Si lo necesitas, activa el comparativo Max–Min y documenta Antes/Después.
+6. Exporta toda la revisión en un mismo PDF.
 
 La selección se conserva localmente en el dispositivo. Las fotografías se procesan en el navegador y no se envían ni se guardan de forma permanente.
 
 ## Catálogo JSON
 
-`data/layouts.json` es la fuente única para campañas, categorías, estaciones, variantes y áreas opcionales. Su contrato formal está documentado en `data/layouts.schema.json`. Para agregar una estación:
+`data/layouts.json` es la fuente única para campañas, categorías, estaciones, variantes, áreas opcionales y referencias Max–Min. Su contrato formal está documentado en `data/layouts.schema.json`. Para agregar una estación:
 
 - Usa un `code` único.
 - Asigna una categoría existente.
@@ -23,6 +24,8 @@ La selección se conserva localmente en el dispositivo. Las fotografías se proc
 - Ejecuta la auditoría antes de publicar.
 
 No es necesario modificar `app.js` para agregar campañas, estaciones o variantes compatibles con el esquema actual.
+
+El módulo Max–Min es opcional, reutiliza la tienda y la fecha de la revisión y no contiene botones ni enlaces de carpetas compartidas.
 
 ## Validación y mantenimiento
 

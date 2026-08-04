@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v4";
+const CACHE = "starbucks-layouts-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -9,6 +9,12 @@ const APP_SHELL = [
   "./manifest.json",
   "./data/layouts.json",
   "./assets/juntemonos-mas.png",
+  "./assets/maxmin/referencia-maxmin.png",
+  "./assets/maxmin/layout_ejemplo.jpeg",
+  "./assets/maxmin/limpieza_back.jpeg",
+  "./assets/maxmin/limpieza_ejemplo_1.jpeg",
+  "./assets/maxmin/limpieza_ejemplo_2.jpeg",
+  "./assets/maxmin/limpieza_ejemplo_3.jpeg",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
