@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#006241">
-  <meta name="description" content="Comparador operativo de layout teórico y acomodo real para tiendas.">
+  <meta name="description" content="Comparador operativo de layout de referencia y acomodo real para tiendas.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,6 +13,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preload" href="data/layouts.json" as="fetch" crossorigin="anonymous">
   <link rel="stylesheet" href="styles.css">
   <script defer src="app.js"></script>
 </head>
@@ -22,24 +23,43 @@
 
   <header class="topbar">
     <div class="topbar__inner">
-      <a class="brand" href="#configuracion" aria-label="Ir a configuración">
+      <a class="brand" href="#inicio" aria-label="Ir al inicio">
         <span class="brand__mark" aria-hidden="true">✦</span>
         <span><strong>Starbucks Layouts</strong><small>Layout vs. acomodo real</small></span>
       </a>
       <div class="status-group">
+        <span id="saveStatus" class="status status--saved" role="status" aria-live="polite">Listo</span>
         <span id="networkStatus" class="status" role="status" aria-live="polite">En línea</span>
-        <button id="installButton" class="button button--ghost button--compact hidden" type="button">Instalar app</button>
+        <button id="installButton" class="button button--ghost button--compact hidden" type="button">Instalar</button>
       </div>
     </div>
+    <nav class="step-nav" aria-label="Progreso de la revisión">
+      <button class="step-nav__item current" type="button" data-jump="configuracion" data-step="1"><span>1</span><strong>Configurar</strong></button>
+      <button class="step-nav__item" type="button" data-jump="variantNavigation" data-step="2"><span>2</span><strong>Elegir layout</strong></button>
+      <button class="step-nav__item" type="button" data-jump="sheet" data-step="3"><span>3</span><strong>Comparar</strong></button>
+    </nav>
   </header>
 
   <main class="app" id="workspace">
+    <section class="hero" id="inicio" aria-labelledby="heroTitle">
+      <div class="hero__copy">
+        <span class="eyebrow">Herramienta operativa</span>
+        <h1 id="heroTitle">Del layout de referencia al acomodo real</h1>
+        <p>Selecciona la estación, compara visualmente y genera una evidencia clara para alinear al equipo.</p>
+        <div class="hero__actions">
+          <button id="startButton" class="button" type="button">Iniciar revisión</button>
+          <span id="catalogSummary" class="catalog-summary">Cargando catálogo…</span>
+        </div>
+      </div>
+      <img class="initiative" src="assets/juntemonos-mas.png" alt="Juntémonos más" width="565" height="162">
+    </section>
+
     <section class="panel setup" id="configuracion" aria-labelledby="setupTitle">
       <div class="section-heading">
         <div>
-          <span class="eyebrow">Paso 1 de 3</span>
-          <h1 id="setupTitle">Configura la revisión</h1>
-          <p>Selecciona tienda, campaña y estación. Tu avance se guarda en este dispositivo.</p>
+          <span class="eyebrow">Paso 1 · Contexto operativo</span>
+          <h2 id="setupTitle">Configura la revisión</h2>
+          <p>La selección se guarda únicamente en este dispositivo.</p>
         </div>
         <button id="resetButton" class="button button--text" type="button">Reiniciar</button>
       </div>
@@ -59,11 +79,17 @@
         </div>
       </div>
 
+      <div id="recentSection" class="recent hidden" aria-labelledby="recentTitle">
+        <strong id="recentTitle">Estaciones recientes</strong>
+        <div id="recentStations" class="recent__items"></div>
+      </div>
+
       <div id="variantNavigation" class="variant-navigation">
         <div class="variant-navigation__head">
           <div>
-            <span class="eyebrow">Paso 2 de 3</span>
+            <span class="eyebrow">Paso 2 · Layout de referencia</span>
             <h2>Elige la variante</h2>
+            <p>Usa las flechas o desliza las miniaturas.</p>
           </div>
           <div class="variant-controls" aria-label="Navegación entre variantes">
             <button id="previousVariant" class="icon-button" type="button" aria-label="Variante anterior">←</button>
@@ -71,7 +97,12 @@
             <button id="nextVariant" class="icon-button" type="button" aria-label="Variante siguiente">→</button>
           </div>
         </div>
-        <div class="catalog" id="catalog" role="listbox" aria-label="Variantes de layout"></div>
+        <div class="catalog" id="catalog" role="listbox" aria-label="Variantes de layout" tabindex="0"></div>
+      </div>
+
+      <div class="continue-row">
+        <div><strong id="selectionSummary">Completa la selección</strong><small>Podrás regresar sin perder tu avance.</small></div>
+        <button id="continueButton" class="button button--wide" type="button">Ir a comparar</button>
       </div>
     </section>
 
@@ -80,21 +111,27 @@
         <div class="sheet-title">
           <span class="sheet-icon" aria-hidden="true">✦</span>
           <div>
-            <span class="eyebrow">Paso 3 de 3 · Comparación</span>
-            <h2 class="main-title" id="mainTitle">Layout - Summer ☀️</h2>
-            <p class="subtitle" id="subTitle">Tienda: Sin definir · Estación: ESP 01</p>
+            <span class="eyebrow">Paso 3 · Comparación</span>
+            <h2 class="main-title" id="mainTitle">Layout operativo</h2>
+            <p class="subtitle" id="subTitle">Tienda: Sin definir</p>
           </div>
         </div>
-        <div class="meta"><strong>Uso operativo</strong><span id="dateLabel"></span></div>
+        <div class="sheet-head__actions pdf-hide">
+          <button id="changeSelectionButton" class="button button--ghost button--compact" type="button">Cambiar selección</button>
+          <div class="meta"><strong>Uso operativo</strong><span id="dateLabel"></span></div>
+        </div>
       </div>
 
       <div class="compare" id="compare">
         <article class="block" id="theoryBlock">
           <div class="block-head">
             <div><span class="eyebrow">Referencia</span><h3 id="layoutTitle">ESP 01</h3></div>
+            <button id="zoomTheoryButton" class="button button--ghost button--compact pdf-hide" type="button">Ampliar</button>
           </div>
-          <div class="imgbox"><img id="theoryImg" alt="Layout teórico ESP 01" decoding="async"></div>
-          <p class="helper pdf-hide">Selecciona la variante que mejor se acople a tu tienda.</p>
+          <button id="theoryImageButton" class="imgbox imgbox--button" type="button" aria-label="Ampliar layout de referencia">
+            <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async">
+          </button>
+          <p class="helper pdf-hide">Toca la imagen para revisar el detalle.</p>
         </article>
 
         <article class="block" id="realBlock">
@@ -102,8 +139,8 @@
             <div><span class="eyebrow">Evidencia real</span><h3 id="realTitle">ESP 01</h3></div>
             <span id="photoStatus" class="photo-status pdf-hide">Pendiente</span>
           </div>
-          <div class="imgbox" id="realBox">
-            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Agrega una foto del área</strong><small>Usa cámara o galería</small></div>
+          <div class="imgbox dropzone" id="realBox" tabindex="0" role="button" aria-label="Agregar evidencia real con cámara, galería o arrastrando una imagen">
+            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Agrega una foto del área</strong><small>Usa cámara, galería o arrastra aquí</small></div>
             <img id="realImg" class="hidden" alt="Foto del acomodo real">
             <div class="photo-actions pdf-hide">
               <button class="button" type="button" data-photo-action="camera" data-target="real">Tomar foto</button>
@@ -119,7 +156,7 @@
             <div class="field"><label for="optName1">Nombre editable</label><input id="optName1" maxlength="80"></div>
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 1</span><h3 id="optTitle1"></h3></div></div>
-          <div class="imgbox">
+          <div class="imgbox dropzone" data-drop-target="opt1">
             <div class="empty pdf-hide" id="optEmpty1"><span aria-hidden="true">▣</span><strong>Agrega la primera evidencia</strong></div>
             <img id="optImg1" class="hidden" alt="Primera evidencia real">
             <div class="photo-actions pdf-hide">
@@ -136,7 +173,7 @@
             <div class="field"><label for="optName2">Nombre editable</label><input id="optName2" maxlength="80"></div>
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 2</span><h3 id="optTitle2"></h3></div></div>
-          <div class="imgbox">
+          <div class="imgbox dropzone" data-drop-target="opt2">
             <div class="empty pdf-hide" id="optEmpty2"><span aria-hidden="true">▣</span><strong>Agrega la segunda evidencia</strong></div>
             <img id="optImg2" class="hidden" alt="Segunda evidencia real">
             <div class="photo-actions pdf-hide">
@@ -149,16 +186,31 @@
       </div>
 
       <div class="sheet-actions pdf-hide">
-        <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
+        <div class="completion">
+          <span id="completionIcon" aria-hidden="true">○</span>
+          <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
+        </div>
         <button id="exportButton" class="button button--export" type="button">Exportar PDF</button>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>Herramienta operativa · Uso interno</p>
+    <div><strong>Starbucks Layouts</strong><span>Herramienta operativa · Uso interno</span></div>
+    <img src="assets/juntemonos-mas.png" alt="Juntémonos más" width="565" height="162">
     <p><strong>Diseño: Jorge Alcantar Aguiar &amp; Enrique César Flores</strong></p>
   </footer>
+
+  <div class="mobile-actions pdf-hide" aria-label="Acciones rápidas">
+    <button type="button" data-jump="configuracion">Configurar</button>
+    <button type="button" data-jump="sheet">Comparar</button>
+    <button id="mobileExportButton" type="button">Exportar</button>
+  </div>
+
+  <dialog id="imageDialog" class="image-dialog">
+    <div class="image-dialog__head"><strong id="dialogTitle">Layout</strong><button id="closeDialogButton" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
+    <img id="dialogImage" alt="Vista ampliada del layout">
+  </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input id="cameraInput" class="hidden" type="file" accept="image/*" capture="environment">

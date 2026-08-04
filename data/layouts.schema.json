@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sbx-mx.github.io/layout/data/layouts.schema.json",
+  "title": "Starbucks Layouts Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "updatedAt", "brand", "campaigns", "stationCategories", "stations", "optionalAreas"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "updatedAt": { "type": "string", "format": "date" },
+    "brand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "purpose", "initiative"],
+      "properties": {
+        "product": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "initiative": { "type": "string", "minLength": 1 }
+      }
+    },
+    "campaigns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "icon"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "icon": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "stationCategories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+          "label": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "stations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "name", "shortName", "category", "variants", "assetBase"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "shortName": { "type": "string", "minLength": 1 },
+          "category": { "type": "string", "minLength": 1 },
+          "variants": { "type": "integer", "minimum": 0 },
+          "assetBase": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+          "displayCode": { "type": "string", "minLength": 1 },
+          "optional": { "type": "boolean" }
+        }
+      }
+    },
+    "optionalAreas": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

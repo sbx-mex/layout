@@ -1,36 +1,32 @@
 #!/usr/bin/env python3
-"""Auditor determinista para Starbucks Layouts; no modifica archivos."""
+"""Audita Starbucks Layouts y, bajo confirmación externa, retira residuos seguros."""
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
+import shutil
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
-REQUIRED = ("index.html", "styles.css", "app.js", "sw.js", "manifest.json")
-
-
-def fail(message: str, errors: list[str]) -> None:
-    errors.append(message)
-
-
-def station_assets(js: str) -> set[str]:
-    pattern = re.compile(r'\{ code: "[^"]+", name: "[^"]+", variants: (\d+), base: "([^"]+)"')
-    expected: set[str] = set()
-    for count_raw, base in pattern.findall(js):
-        for index in range(1, int(count_raw) + 1):
-            expected.add(f"{base}_{index:02d}.jpg")
-    return expected
-
-
-def duplicate_ids(html: str) -> set[str]:
-    ids = re.findall(r'\bid="([^"]+)"', html)
-    return {item for item in ids if ids.count(item) > 1}
+DATA_FILE = ROOT / "data" / "layouts.json"
+REQUIRED = (
+    "index.html",
+    "styles.css",
+    "app.js",
+    "sw.js",
+    "manifest.json",
+    "data/layouts.json",
+    "data/layouts.schema.json",
+    "assets/juntemonos-mas.png",
+)
+GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
+OBSOLETE_FILES = ("README.txt",)
 
 
 def file_hash(path: Path) -> str:
@@ -39,72 +35,195 @@ def file_hash(path: Path) -> str:
     return digest.hexdigest()
 
 
+def duplicate_ids(html: str) -> set[str]:
+    ids = re.findall(r'\bid="([^"]+)"', html)
+    return {item for item in ids if ids.count(item) > 1}
+
+
+def referenced_dom_ids(js: str) -> set[str]:
+    return set(re.findall(r'\$\("([A-Za-z][A-Za-z0-9_-]*)"\)', js))
+
+
+def load_json(path: Path, errors: list[str]) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"JSON inválido en {path.relative_to(ROOT)}: {exc}")
+        return {}
+
+
+def validate_catalog(data: dict, errors: list[str]) -> set[str]:
+    if data.get("$schema") != "./layouts.schema.json":
+        errors.append("data/layouts.json debe declarar ./layouts.schema.json")
+    if data.get("schemaVersion") != 1:
+        errors.append("data/layouts.json debe usar schemaVersion 1")
+    campaigns = data.get("campaigns")
+    categories = data.get("stationCategories")
+    stations = data.get("stations")
+    optional_areas = data.get("optionalAreas")
+    for name, value in (("campaigns", campaigns), ("stationCategories", categories), ("stations", stations), ("optionalAreas", optional_areas)):
+        if not isinstance(value, list) or not value:
+            errors.append(f"El catálogo requiere una lista no vacía: {name}")
+    if errors:
+        return set()
+
+    campaign_ids = [item.get("id") for item in campaigns]
+    category_ids = [item.get("id") for item in categories]
+    station_codes = [item.get("code") for item in stations]
+    if len(campaign_ids) != len(set(campaign_ids)):
+        errors.append("Existen campañas duplicadas")
+    if len(category_ids) != len(set(category_ids)):
+        errors.append("Existen categorías de estación duplicadas")
+    if len(station_codes) != len(set(station_codes)):
+        errors.append("Existen códigos de estación duplicados")
+
+    expected_assets = {"juntemonos-mas.png"}
+    optional_count = 0
+    for position, station in enumerate(stations, start=1):
+        required = ("code", "name", "shortName", "category", "variants", "assetBase")
+        absent = [key for key in required if key not in station]
+        if absent:
+            errors.append(f"Estación #{position} incompleta: {', '.join(absent)}")
+            continue
+        if station["category"] not in category_ids:
+            errors.append(f"{station['code']}: categoría inexistente {station['category']}")
+        if not isinstance(station["variants"], int) or station["variants"] < 0:
+            errors.append(f"{station['code']}: variants debe ser entero mayor o igual a cero")
+            continue
+        if station.get("optional"):
+            optional_count += 1
+            if station["variants"] != 0:
+                errors.append(f"{station['code']}: una estación opcional no debe declarar layouts")
+        elif station["variants"] < 1:
+            errors.append(f"{station['code']}: debe declarar al menos un layout")
+        for index in range(1, station["variants"] + 1):
+            expected_assets.add(f"{station['assetBase']}_{index:02d}.jpg")
+    if optional_count != 1:
+        errors.append("Debe existir exactamente una opción de evidencias libres")
+    if len(optional_areas) != len(set(optional_areas)):
+        errors.append("Existen áreas opcionales duplicadas")
+    return expected_assets
+
+
+def remove_safe_residue(unused_assets: list[Path]) -> list[str]:
+    removed: list[str] = []
+    for path in unused_assets:
+        resolved = path.resolve()
+        if resolved.parent != ASSETS.resolve() or not path.is_file():
+            continue
+        path.unlink()
+        removed.append(path.relative_to(ROOT).as_posix())
+    for relative in GENERATED_DIRS:
+        path = ROOT / relative
+        if path.is_dir():
+            shutil.rmtree(path)
+            removed.append(f"{relative}/")
+    for relative in OBSOLETE_FILES:
+        path = ROOT / relative
+        if path.is_file():
+            path.unlink()
+            removed.append(relative)
+    return removed
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prune", action="store_true", help="Elimina solo assets no declarados y carpetas temporales conocidas")
+    parser.add_argument("--report", type=Path, help="Guarda un reporte JSON de la auditoría")
+    args = parser.parse_args()
+
     errors: list[str] = []
     for name in REQUIRED:
         if not (ROOT / name).is_file():
-            fail(f"Falta archivo requerido: {name}", errors)
-
-    if errors:
-        print("\n".join(f"ERROR: {error}" for error in errors))
-        return 1
-
-    html = (ROOT / "index.html").read_text(encoding="utf-8")
-    css = (ROOT / "styles.css").read_text(encoding="utf-8")
-    js = (ROOT / "app.js").read_text(encoding="utf-8")
-    manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-    service_worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-
-    expected_assets = station_assets(js)
-    actual_assets = {path.name for path in ASSETS.glob("*.jpg")}
-    missing = sorted(expected_assets - actual_assets)
-    unused = sorted(actual_assets - expected_assets)
-    if missing:
-        fail(f"Imágenes requeridas ausentes: {', '.join(missing)}", errors)
-    if unused:
-        fail(f"Imágenes sin uso comprobable: {', '.join(unused)}", errors)
-    duplicates = duplicate_ids(html)
-    if duplicates:
-        fail(f"IDs HTML duplicados: {', '.join(sorted(duplicates))}", errors)
-    for required_id in ("workspace", "storeName", "campaignSelect", "stationSelect", "catalog", "sheet", "exportButton"):
-        if f'id="{required_id}"' not in html:
-            fail(f"Control principal ausente: #{required_id}", errors)
-    if re.search(r'\son\w+\s*=', html, flags=re.IGNORECASE):
-        fail("Se detectaron eventos inline; deben administrarse desde app.js", errors)
-    if '<html lang="es">' not in html or "skip-link" not in html:
-        fail("Faltan metadatos o navegación accesible", errors)
-    if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
-        fail("Faltan estilos de accesibilidad", errors)
-    if "serviceWorker.register" not in js or '"sw.js"' not in js:
-        fail("app.js no registra el service worker", errors)
-    for shell_file in ("index.html", "styles.css", "app.js", "manifest.json"):
-        if shell_file not in service_worker:
-            fail(f"El shell sin conexión no incluye {shell_file}", errors)
-
-    required_manifest = {"name", "short_name", "start_url", "scope", "display", "icons", "id"}
-    absent_manifest = sorted(required_manifest - manifest.keys())
-    if absent_manifest:
-        fail(f"Manifest incompleto: {', '.join(absent_manifest)}", errors)
-    for icon in manifest.get("icons", []):
-        if not (ROOT / icon.get("src", "")).is_file():
-            fail(f"Icono del manifest inexistente: {icon.get('src')}", errors)
-
-    by_hash: dict[str, list[str]] = defaultdict(list)
-    for path in sorted(ASSETS.glob("*.jpg")):
-        by_hash[file_hash(path)].append(path.name)
-    duplicate_groups = [names for names in by_hash.values() if len(names) > 1]
-
+            errors.append(f"Falta archivo requerido: {name}")
     if errors:
         print("AUDITORÍA FALLIDA")
         print("\n".join(f"- {error}" for error in errors))
         return 1
 
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    css = (ROOT / "styles.css").read_text(encoding="utf-8")
+    js = (ROOT / "app.js").read_text(encoding="utf-8")
+    manifest = load_json(ROOT / "manifest.json", errors)
+    catalog = load_json(DATA_FILE, errors)
+    service_worker = (ROOT / "sw.js").read_text(encoding="utf-8")
+    expected_assets = validate_catalog(catalog, errors)
+
+    actual_assets = {path.name: path for path in ASSETS.iterdir() if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}}
+    missing = sorted(expected_assets - actual_assets.keys())
+    unused_names = sorted(actual_assets.keys() - expected_assets)
+    unused_assets = [actual_assets[name] for name in unused_names]
+    obsolete_files = [relative for relative in OBSOLETE_FILES if (ROOT / relative).is_file()]
+    if missing:
+        errors.append(f"Recursos requeridos ausentes: {', '.join(missing)}")
+
+    duplicates = duplicate_ids(html)
+    if duplicates:
+        errors.append(f"IDs HTML duplicados: {', '.join(sorted(duplicates))}")
+    html_ids = set(re.findall(r'\bid="([^"]+)"', html))
+    missing_dom = sorted(referenced_dom_ids(js) - html_ids)
+    if missing_dom:
+        errors.append(f"app.js referencia controles HTML inexistentes: {', '.join(missing_dom)}")
+    if re.search(r'\son\w+\s*=', html, flags=re.IGNORECASE):
+        errors.append("Se detectaron eventos inline; deben administrarse desde app.js")
+    if '<html lang="es">' not in html or "skip-link" not in html:
+        errors.append("Faltan metadatos o navegación accesible")
+    if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
+        errors.append("Faltan estilos de accesibilidad")
+    if DATA_FILE.name not in service_worker or DATA_URL_LITERAL not in js:
+        errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
+    if "serviceWorker.register" not in js or '"sw.js"' not in js:
+        errors.append("app.js no registra el service worker")
+    for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json"):
+        if shell_file not in service_worker:
+            errors.append(f"El shell sin conexión no incluye {shell_file}")
+
+    required_manifest = {"name", "short_name", "start_url", "scope", "display", "icons", "id"}
+    absent_manifest = sorted(required_manifest - manifest.keys())
+    if absent_manifest:
+        errors.append(f"Manifest incompleto: {', '.join(absent_manifest)}")
+    for icon in manifest.get("icons", []):
+        if not (ROOT / icon.get("src", "")).is_file():
+            errors.append(f"Icono del manifest inexistente: {icon.get('src')}")
+
+    by_hash: dict[str, list[str]] = defaultdict(list)
+    for path in sorted(ASSETS.glob("*.jpg")):
+        by_hash[file_hash(path)].append(path.name)
+    duplicate_groups = [names for names in by_hash.values() if len(names) > 1]
+    removed = remove_safe_residue(unused_assets) if args.prune and not errors else []
+
+    report = {
+        "status": "failed" if errors else "passed",
+        "schemaVersion": catalog.get("schemaVersion"),
+        "campaigns": len(catalog.get("campaigns", [])),
+        "stations": len(catalog.get("stations", [])),
+        "layouts": len(expected_assets - {"juntemonos-mas.png"}),
+        "missingAssets": missing,
+        "unusedAssets": unused_names,
+        "obsoleteFiles": obsolete_files,
+        "removed": removed,
+        "duplicateContentGroups": duplicate_groups,
+        "errors": errors,
+    }
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    if errors:
+        print("AUDITORÍA FALLIDA")
+        print("\n".join(f"- {error}" for error in errors))
+        return 1
     print("AUDITORÍA APROBADA")
-    print(f"- {len(expected_assets)} layouts referenciados y presentes")
-    print(f"- {len(actual_assets)} imágenes totales, 0 recursos sin uso")
-    print(f"- {len(duplicate_groups)} grupos de archivos idénticos informativos")
-    print("- HTML, PWA, accesibilidad y navegación: correctos")
+    print(f"- {report['layouts']} layouts declarados en JSON y presentes")
+    print(f"- {report['stations']} opciones de estación y {report['campaigns']} campañas")
+    print(f"- {len(unused_names)} recursos huérfanos y {len(obsolete_files)} archivos obsoletos detectados")
+    print(f"- {len(removed)} residuos eliminados de forma segura")
+    print(f"- {len(duplicate_groups)} grupos idénticos conservados por tener referencias distintas")
+    print("- HTML, navegación, PWA, accesibilidad y catálogo: correctos")
     return 0
+
+
+DATA_URL_LITERAL = '"data/layouts.json"'
 
 
 if __name__ == "__main__":

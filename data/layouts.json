@@ -1,0 +1,48 @@
+{
+  "$schema": "./layouts.schema.json",
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-04",
+  "brand": {
+    "product": "Starbucks Layouts",
+    "purpose": "Layout vs. acomodo real",
+    "initiative": "JUNTÉMONOS MÁS"
+  },
+  "campaigns": [
+    { "id": "WINTER", "label": "Winter", "icon": "❄️" },
+    { "id": "SPRING", "label": "Spring", "icon": "🌸" },
+    { "id": "SUMMER", "label": "Summer", "icon": "☀️" },
+    { "id": "SUMMER II", "label": "Summer II", "icon": "🏖️" },
+    { "id": "FALL", "label": "Fall", "icon": "🍂" },
+    { "id": "XMAS", "label": "Christmas", "icon": "🎄" }
+  ],
+  "stationCategories": [
+    { "id": "barra", "label": "Barra y producción" },
+    { "id": "cliente", "label": "Experiencia del cliente" },
+    { "id": "soporte", "label": "Soporte operativo" }
+  ],
+  "stations": [
+    { "code": "ESP", "name": "Espresso / Mastrena", "shortName": "Espresso", "category": "barra", "variants": 11, "assetBase": "esp" },
+    { "code": "CBE", "name": "Bebidas Frías CBE", "shortName": "CBE", "category": "barra", "variants": 5, "assetBase": "cbe" },
+    { "code": "CBS", "name": "Bebidas Frías CBS", "shortName": "CBS", "category": "barra", "variants": 7, "assetBase": "cbs" },
+    { "code": "FOOD", "name": "Alimentos / Horno", "shortName": "Alimentos", "category": "barra", "variants": 6, "assetBase": "food" },
+    { "code": "CAFE", "name": "Café y Té", "shortName": "Café y Té", "category": "barra", "variants": 4, "assetBase": "cafe", "displayCode": "CAFÉ" },
+    { "code": "PROD", "name": "Producción / Mesa Preparación", "shortName": "Producción", "category": "barra", "variants": 2, "assetBase": "produccion" },
+    { "code": "DT", "name": "Drive Thru", "shortName": "Drive Thru", "category": "cliente", "variants": 2, "assetBase": "dt" },
+    { "code": "HANDOFF", "name": "Entrega", "shortName": "Entrega", "category": "cliente", "variants": 3, "assetBase": "handoff" },
+    { "code": "COND", "name": "Condimentos", "shortName": "Condimentos", "category": "cliente", "variants": 4, "assetBase": "cond" },
+    { "code": "CONS", "name": "Consolidación", "shortName": "Consolidación", "category": "soporte", "variants": 3, "assetBase": "consolidacion" },
+    { "code": "BOH", "name": "Back of House / Preparación", "shortName": "BOH", "category": "soporte", "variants": 1, "assetBase": "boh_prep" },
+    { "code": "OPCIONAL", "name": "Opcional / 2 Evidencias", "shortName": "Otras áreas", "category": "soporte", "variants": 0, "assetBase": "optional", "optional": true }
+  ],
+  "optionalAreas": [
+    "BOH - Refrigerador 2 Puertas",
+    "BOH - Refrigerador 1 Puerta",
+    "BOH - Congelador 2 Puertas",
+    "BOH - Congelador 1 Puerta",
+    "BOH - Rack",
+    "Barra - Refrigerador 2 Puertas",
+    "Barra - Refrigerador 1 Puerta",
+    "Barra - Gaveta",
+    "Otra Área"
+  ]
+}
