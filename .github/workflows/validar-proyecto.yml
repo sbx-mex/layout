@@ -1,0 +1,48 @@
+name: Validar proyecto
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-layout-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auditoria:
+    name: JSON, navegación, PWA y recursos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validar sintaxis
+        run: |
+          node --check app.js
+          node --check sw.js
+          python -m json.tool data/layouts.json > /dev/null
+          python -m json.tool data/layouts.schema.json > /dev/null
+          python -m json.tool manifest.json > /dev/null
+
+      - name: Auditar proyecto
+        run: python tools/audit_project.py --report "${RUNNER_TEMP}/audit.json"
+
+      - name: Publicar reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-layout-${{ github.run_number }}
+          path: ${{ runner.temp }}/audit.json
+          if-no-files-found: warn
+          retention-days: 14
