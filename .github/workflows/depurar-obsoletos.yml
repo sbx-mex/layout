@@ -1,10 +1,10 @@
-name: Depurar archivos redundantes
+name: Depurar archivos obsoletos
 
 on:
   workflow_dispatch:
     inputs:
       accion:
-        description: "AUDITAR solo reporta; ELIMINAR retira recursos huérfanos seguros"
+        description: "AUDITAR reporta; ELIMINAR retira solo recursos huérfanos comprobados"
         required: true
         type: choice
         options:
