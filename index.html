@@ -107,13 +107,17 @@
         <article class="block" id="theoryBlock">
           <div class="reference-selector pdf-hide" id="referenceSelector">
             <div class="reference-selector__head">
-              <div><span class="eyebrow">Catálogo de la estación</span><strong>Compara y elige una referencia</strong></div>
+              <div><span class="eyebrow">Catálogo dinámico</span><strong>Elige y compara sin perder de vista las opciones</strong></div>
               <div class="catalog-state"><span id="variantCounter" class="counter" aria-live="polite"></span><small id="catalogHint">Todas las opciones permanecen visibles</small></div>
             </div>
+            <div class="reference-toolbar">
+              <label class="reference-quick-select" for="variantSelect"><span>Ir directo a</span><select id="variantSelect" aria-label="Elegir referencia directamente"></select></label>
+              <p id="activeReferenceMessage" class="active-reference-message" aria-live="polite">Referencia activa: ESP 01</p>
+            </div>
             <div class="reference-reel" aria-label="Carrete de referencias de la estación">
-              <button id="comparePrevious" class="reel-arrow" type="button" aria-label="Referencia anterior">←</button>
+              <button id="comparePrevious" class="reel-arrow" type="button" aria-label="Referencia anterior" title="Referencia anterior">←</button>
               <div id="compareReferenceReel" class="reference-reel__track" role="listbox" tabindex="0"></div>
-              <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente">→</button>
+              <button id="compareNext" class="reel-arrow" type="button" aria-label="Referencia siguiente" title="Referencia siguiente">→</button>
             </div>
           </div>
           <div class="block-head">
@@ -182,6 +186,7 @@
           <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
         </div>
         <div class="sheet-actions__buttons">
+          <button id="editReferenceButton" class="button button--ghost" type="button">Cambiar referencia</button>
           <button id="exportButton" class="button button--export" type="button">Exportar Lay Out</button>
         </div>
       </div>
@@ -256,8 +261,11 @@
 
   <footer class="site-footer">
     <div><strong>Starbucks Layouts</strong><span>Herramienta operativa · Uso interno</span></div>
-    <img src="assets/juntemonos-mas.png" alt="Juntémonos más" width="565" height="162">
-    <p><strong>Diseño: Jorge Alcantar Aguiar &amp; Enrique César Flores</strong></p>
+    <div class="footer-initiative"><img src="assets/juntemonos-mas.png" alt="Juntémonos más" width="565" height="162"><span>Estamos mejorando para ti</span></div>
+    <div class="footer-contact">
+      <p><strong>Diseño: Jorge Alcantar Aguiar &amp; Enrique César Flores</strong></p>
+      <a class="comments-link" href="https://wa.me/message/ENKDSAHYHIGAN1" target="_blank" rel="noopener noreferrer">Comentarios y/o Sugerencias <span aria-hidden="true">↗</span></a>
+    </div>
   </footer>
 
   <div class="mobile-actions pdf-hide" aria-label="Acciones rápidas">

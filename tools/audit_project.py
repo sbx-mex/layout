@@ -31,6 +31,8 @@ VISUAL_SELECTOR_IDS = {
     "referenceSelector",
     "variantCounter",
     "catalogHint",
+    "variantSelect",
+    "activeReferenceMessage",
     "compareReferenceReel",
     "comparePrevious",
     "compareNext",
@@ -39,6 +41,7 @@ VISUAL_SELECTOR_IDS = {
     "maxminReferenceReel",
     "improvementList",
     "exportButton",
+    "editReferenceButton",
     "exportImprovementButton",
     "improvementMeta",
     "improvementPageCount",
@@ -224,6 +227,14 @@ def main() -> int:
         errors.append("Debe existir exactamente un carrete de Lay Out")
     if "Todas las opciones permanecen visibles" not in html or "grid-template-columns:repeat(auto-fit" not in css:
         errors.append("El carrete no funciona como catálogo dinámico visible")
+    if 'id="variantSelect"' not in html or '$("variantSelect").addEventListener("change"' not in js:
+        errors.append("El selector directo no está sincronizado con el catálogo visual")
+    if 'selectedVariant = (Number(index) + station.variants) % station.variants' not in js:
+        errors.append("La navegación del catálogo no funciona en ciclo continuo")
+    if "bindReferenceSwipe" not in js:
+        errors.append("Falta navegación táctil sobre el modelo de referencia")
+    if 'href="https://wa.me/message/ENKDSAHYHIGAN1"' not in html:
+        errors.append("Falta el enlace de Comentarios y/o Sugerencias")
     for action in ("camera", "attach", "delete"):
         if f'data-photo-action="{action}"' not in html:
             errors.append(f"Falta acción fotográfica: {action}")

@@ -209,10 +209,16 @@ function createReelThumb({ image, label, active, onSelect }) {
 
 function renderCompareReferenceReel() {
   const reel = $("compareReferenceReel");
+  const select = $("variantSelect");
   const station = getStation();
   reel.replaceChildren();
+  select.replaceChildren();
   if (station.optional) return;
   for (let index = 0; index < station.variants; index += 1) {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = variantLabel(index);
+    select.append(option);
     reel.append(createReelThumb({
       image: imagePath(index),
       label: variantLabel(index),
@@ -220,10 +226,12 @@ function renderCompareReferenceReel() {
       onSelect: () => selectVariant(index)
     }));
   }
-  $("comparePrevious").disabled = selectedVariant === 0;
-  $("compareNext").disabled = selectedVariant === station.variants - 1;
+  select.value = String(selectedVariant);
+  $("comparePrevious").disabled = station.variants < 2;
+  $("compareNext").disabled = station.variants < 2;
   $("variantCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
-  $("catalogHint").textContent = `${station.variants} ${station.variants === 1 ? "modelo disponible" : "modelos disponibles"}`;
+  $("catalogHint").textContent = `${station.variants} ${station.variants === 1 ? "modelo siempre visible" : "modelos siempre visibles"}`;
+  $("activeReferenceMessage").textContent = `Referencia activa: ${variantLabel()}`;
 }
 
 function renderMaxMinReferences() {
@@ -329,12 +337,45 @@ async function loadImprovementPhoto(file, id, kind) {
 
 function selectVariant(index, focus = false) {
   const station = getStation();
-  selectedVariant = Math.max(0, Math.min(index, station.variants - 1));
+  if (!station.variants) return;
+  selectedVariant = (Number(index) + station.variants) % station.variants;
   renderCatalog();
   updateView();
   const active = $("compareReferenceReel").querySelector(".reel-thumb.active");
   if (window.matchMedia("(max-width: 620px)").matches) active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   if (focus) active?.focus();
+}
+
+function bindReferenceSwipe() {
+  const target = $("theoryImageButton");
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  target.addEventListener("touchstart", event => {
+    const touch = event.changedTouches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    moved = false;
+  }, { passive: true });
+  target.addEventListener("touchmove", event => {
+    const touch = event.changedTouches[0];
+    moved = moved || Math.abs(touch.clientX - startX) > 18;
+  }, { passive: true });
+  target.addEventListener("touchend", event => {
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    if (Math.abs(deltaX) < 52 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+    event.preventDefault();
+    selectVariant(selectedVariant + (deltaX < 0 ? 1 : -1));
+    announce(`${variantLabel()} seleccionada.`);
+  }, { passive: false });
+  target.addEventListener("click", event => {
+    if (!moved) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    moved = false;
+  }, true);
 }
 
 function hasPhoto(target) {
@@ -592,6 +633,10 @@ function bindEvents() {
     renderCatalog();
     updateView();
   });
+  $("variantSelect").addEventListener("change", event => {
+    selectVariant(Number(event.target.value));
+    announce(`${variantLabel()} seleccionada.`);
+  });
   $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
   $("compareReferenceReel").addEventListener("keydown", event => {
@@ -670,10 +715,12 @@ function bindEvents() {
   document.querySelectorAll("[data-jump]").forEach(button => button.addEventListener("click", () => jumpTo(button.dataset.jump)));
   $("startButton").addEventListener("click", () => jumpTo("configuracion"));
   $("continueButton").addEventListener("click", () => jumpTo("sheet"));
+  $("editReferenceButton").addEventListener("click", () => jumpTo("referenceSelector"));
   $("exportButton").addEventListener("click", exportLayoutPdf);
   $("exportImprovementButton").addEventListener("click", exportImprovementPdf);
   $("zoomTheoryButton").addEventListener("click", openTheoryDialog);
   $("theoryImageButton").addEventListener("click", openTheoryDialog);
+  bindReferenceSwipe();
   $("closeDialogButton").addEventListener("click", () => $("imageDialog").close());
   $("imageDialog").addEventListener("click", event => { if (event.target === $("imageDialog")) $("imageDialog").close(); });
   $("resetButton").addEventListener("click", () => {

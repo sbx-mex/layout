@@ -31,16 +31,16 @@ El catálogo de referencias mantiene visibles todas las variantes en escritorio 
 
 ## 10 mejoras de esta versión
 
-1. Catálogo completo y persistente en escritorio.
-2. Carrete táctil compacto en móvil.
-3. Cambio inmediato de modelo, título y PDF.
-4. Estado activo de alto contraste sin ocultar alternativas.
-5. Navegación por flechas, Inicio y Fin desde el teclado.
-6. Contador dinámico de modelos y páginas.
-7. Evidencia conservada al comparar otra referencia.
-8. Lay Out ajustado explícitamente a una sola hoja A4.
-9. Una página A4 por cada Antes/Después.
-10. Auditoría Python reforzada para impedir regresiones del catálogo y las exportaciones.
+1. Catálogo completo y persistente: seleccionar nunca oculta las alternativas.
+2. Selector directo sincronizado para saltar a cualquier modelo.
+3. Flechas en ciclo continuo del último modelo al primero.
+4. Deslizamiento táctil sobre la referencia principal.
+5. Cambio inmediato y único de modelo, título, contador y PDF.
+6. Regreso directo al catálogo sin perder la evidencia cargada.
+7. Estado activo de alto contraste y navegación accesible por teclado.
+8. Lay Out ajustado explícitamente a una sola hoja A4 limpia.
+9. Mejora Operativa independiente, con una página por Antes/Después.
+10. Auditoría Python reforzada, pie cercano y canal directo de sugerencias.
 
 ## Validación y mantenimiento
 
@@ -61,4 +61,4 @@ La depuración nunca elimina una imagen declarada en `data/layouts.json`, aunque
 
 El proyecto es estático y puede publicarse directamente con GitHub Pages. Conserva `index.html`, `app.js`, `styles.css`, `sw.js`, `manifest.json`, `data/`, `assets/` e `icons/` en la raíz.
 
-Diseño: Jorge Alcantar Aguiar & Enrique César Flores.
+Diseño: Jorge Alcantar Aguiar & Enrique César Flores. Comentarios y/o Sugerencias: <https://wa.me/message/ENKDSAHYHIGAN1>
