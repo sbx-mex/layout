@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v9";
+const CACHE = "starbucks-layouts-v10";
 const APP_SHELL = [
   "./",
   "./index.html",

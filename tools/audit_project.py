@@ -253,9 +253,18 @@ def main() -> int:
             errors.append(f"Falta comportamiento de navegación visual: {behavior}")
     if 'window.jspdf.jsPDF' not in js or 'pdf.addPage("a4", "portrait")' not in js:
         errors.append("La exportación no garantiza una página independiente por comparativo")
-    if 'const canvas = await window.html2canvas(sheet' not in js or 'pdf.save(filename)' not in js:
-        errors.append("Lay Out no garantiza una exportación limpia de una sola página")
-    if '$("sheet")' not in js or "buildImprovementExportSurface" not in js:
+    if "buildLayoutExportSurface" not in js or 'const canvas = await window.html2canvas(surface' not in js or 'pdf.save(filename)' not in js:
+        errors.append("Lay Out no garantiza una superficie limpia de exportación en una sola página")
+    if "layout-export-surface" not in css or "layout-export-grid" not in css:
+        errors.append("Falta la composición A4 independiente para Lay Out")
+    if "window.print()" in js:
+        errors.append("La exportación conserva un fallback de impresión que puede incluir enlaces o páginas extra")
+    layout_export_source = js[js.find("function buildLayoutExportSurface"):js.find("async function waitForSurfaceImages")]
+    if "href=" in layout_export_source or "<a " in layout_export_source:
+        errors.append("La superficie PDF de Lay Out contiene hipervínculos")
+    if "grid-template-rows:minmax(0,.9fr) minmax(0,1.1fr)" not in css:
+        errors.append("La hoja PDF no prioriza el marco de la fotografía real")
+    if "buildLayoutExportSurface" not in js or "buildImprovementExportSurface" not in js:
         errors.append("Las exportaciones no tienen superficies independientes")
     if "improvementModule" in html[html.find('id="sheet"'):html.find('id="mejoraOperativa"')]:
         errors.append("Mejora Operativa continúa anidada dentro de Lay Out")

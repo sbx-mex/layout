@@ -500,14 +500,65 @@ function openTheoryDialog() {
 }
 
 function loadPdfLibrary() {
-  if (window.html2pdf) return Promise.resolve();
+  if (window.html2canvas && window.jspdf?.jsPDF) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-    script.onload = resolve;
+    script.onload = () => window.html2canvas && window.jspdf?.jsPDF
+      ? resolve()
+      : reject(new Error("El generador de PDF no se inicializó correctamente."));
     script.onerror = () => reject(new Error("Sin conexión para cargar el generador de PDF."));
     document.head.append(script);
   });
+}
+
+function layoutExportCard(eyebrow, title, source, alt) {
+  return `<article class="layout-export-card">
+    <header><span>${escapeHtml(eyebrow)}</span><strong>${escapeHtml(title)}</strong></header>
+    <div class="layout-export-image">${source
+      ? `<img src="${source}" alt="${escapeHtml(alt)}">`
+      : `<div class="layout-export-empty">Sin evidencia fotográfica</div>`}</div>
+  </article>`;
+}
+
+function buildLayoutExportSurface() {
+  const station = getStation();
+  const campaign = getCampaign();
+  const store = $("storeName").value.trim() || "Tienda sin definir";
+  const optional = Boolean(station.optional);
+  const label = optional ? `${optionalName(1)} / ${optionalName(2)}` : variantLabel();
+  const surface = document.createElement("section");
+  surface.className = "layout-export-surface";
+  surface.setAttribute("aria-hidden", "true");
+  const cards = optional
+    ? [
+        layoutExportCard("Evidencia real 1", optionalName(1), hasPhoto("opt1") ? $("optImg1").src : "", `Evidencia real de ${optionalName(1)}`),
+        layoutExportCard("Evidencia real 2", optionalName(2), hasPhoto("opt2") ? $("optImg2").src : "", `Evidencia real de ${optionalName(2)}`)
+      ]
+    : [
+        layoutExportCard("Referencia", label, $("theoryImg").src, `Layout de referencia ${label}`),
+        layoutExportCard("Evidencia real", label, hasPhoto("real") ? $("realImg").src : "", `Evidencia real ${label}`)
+      ];
+  surface.innerHTML = `
+    <header class="layout-export-head">
+      <div class="layout-export-brand"><span aria-hidden="true">✦</span><div><small>LAY OUT</small><h1>Layout · ${escapeHtml(campaign.label)} ${escapeHtml(campaign.icon)}</h1><p>Tienda: ${escapeHtml(store)} · ${optional ? "Áreas" : "Estación"}: ${escapeHtml(label)}</p></div></div>
+      <div class="layout-export-date"><strong>STARBUCKS</strong><span>${escapeHtml(formatDate())}</span></div>
+    </header>
+    <main class="layout-export-grid">${cards.join("")}</main>
+    <footer class="layout-export-footer"><strong>JUNTÉMONOS MÁS</strong><span>Diseño: Jorge Alcantar Aguiar &amp; Enrique César Flores</span></footer>`;
+  document.body.append(surface);
+  return surface;
+}
+
+async function waitForSurfaceImages(surface) {
+  await Promise.all([...surface.querySelectorAll("img")].map(image => {
+    if (image.complete && image.naturalWidth) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      image.addEventListener("load", resolve, { once: true });
+      image.addEventListener("error", () => reject(new Error("No fue posible preparar una imagen para el PDF.")), { once: true });
+    });
+  }));
+  if (document.fonts?.ready) await document.fonts.ready;
 }
 
 async function exportLayoutPdf() {
@@ -515,31 +566,37 @@ async function exportLayoutPdf() {
   const station = getStation();
   const name = station.optional ? `${optionalName(1)}_${optionalName(2)}` : variantLabel();
   const filename = `Layout_${cleanFilename(name)}_${cleanFilename($("storeName").value.trim() || "Tienda")}.pdf`;
-  const sheet = $("sheet");
+  let surface = null;
   if (!reviewReady() && !window.confirm("La evidencia está incompleta. ¿Deseas exportar el Lay Out de todos modos?")) return;
   button.disabled = true;
   button.textContent = "Generando…";
   try {
     await loadPdfLibrary();
-    sheet.classList.add("pdf-export");
     document.body.classList.add("is-exporting");
+    surface = buildLayoutExportSurface();
+    await waitForSurfaceImages(surface);
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const canvas = await window.html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 });
+    const canvas = await window.html2canvas(surface, { scale: 2.25, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0, logging: false });
     const pdf = new window.jspdf.jsPDF({ unit: "in", format: "a4", orientation: "portrait" });
+    pdf.setProperties({
+      title: `Layout · ${name} · ${$("storeName").value.trim() || "Tienda"}`,
+      subject: "Comparativo de layout y evidencia real",
+      author: "Starbucks Layouts",
+      creator: "Starbucks Layouts"
+    });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = .25;
+    const margin = .18;
     const scale = Math.min((pageWidth - margin * 2) / canvas.width, (pageHeight - margin * 2) / canvas.height);
     const width = canvas.width * scale;
     const height = canvas.height * scale;
-    pdf.addImage(canvas.toDataURL("image/jpeg", .96), "JPEG", (pageWidth - width) / 2, (pageHeight - height) / 2, width, height, undefined, "FAST");
+    pdf.addImage(canvas.toDataURL("image/jpeg", .97), "JPEG", (pageWidth - width) / 2, (pageHeight - height) / 2, width, height, undefined, "FAST");
     pdf.save(filename);
-    announce("Lay Out exportado en una sola página.");
+    announce("Lay Out exportado en una página limpia.");
   } catch (error) {
-    announce(`${error.message} Se abrirá la impresión del navegador.`);
-    window.print();
+    announce(`${error.message} No se generó un PDF incompleto; revisa tu conexión e intenta nuevamente.`);
   } finally {
-    sheet.classList.remove("pdf-export");
+    surface?.remove();
     document.body.classList.remove("is-exporting");
     button.disabled = false;
     button.textContent = "Exportar Lay Out";
