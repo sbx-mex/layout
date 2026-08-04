@@ -1,1 +1,35 @@
+name: Validar proyecto
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-layout-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auditoria:
+    name: Navegación, PWA y recursos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validar sintaxis de JavaScript
+        run: node --check app.js && node --check sw.js
+
+      - name: Auditar estructura y archivos utilizados
+        run: python tools/audit_project.py
 
