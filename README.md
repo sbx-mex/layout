@@ -1,15 +1,15 @@
-# Starbucks Layouts + Comparativo de Mejora
+# Starbucks Lay Out + Mejora Operativa
 
-Herramienta operativa para comparar el layout de referencia con el acomodo real y, cuando aplique, documentar mejoras Max–Min en Back, gavetas, racks u otros espacios.
+Conjunto de dos herramientas complementarias: Lay Out como función principal y Mejora Operativa como apoyo para documentar avances Max–Min en Back, gavetas, racks u otros espacios.
 
 ## Recorrido operativo
 
 1. Captura la tienda y selecciona campaña y estación.
-2. Elige la variante desde el carrete visual; la imagen activa se sincroniza con el modelo.
-3. Toma, adjunta o arrastra la fotografía del acomodo real.
+2. Elige la variante desde el mini carrete visual.
+3. Toca el recuadro de evidencia o arrastra la fotografía del acomodo real.
 4. Amplía el layout si necesitas revisar detalles.
-5. Si lo necesitas, activa el comparativo Max–Min y documenta Antes/Después.
-6. Exporta toda la revisión en un mismo PDF.
+5. Exporta Lay Out en una sola página limpia.
+6. Cuando aplique, activa Mejora Operativa, documenta uno o varios espacios y expórtalos en un PDF independiente.
 
 La selección se conserva localmente en el dispositivo. Las fotografías se procesan en el navegador y no se envían ni se guardan de forma permanente.
 
@@ -25,7 +25,7 @@ La selección se conserva localmente en el dispositivo. Las fotografías se proc
 
 No es necesario modificar `app.js` para agregar campañas, estaciones o variantes compatibles con el esquema actual.
 
-El módulo Max–Min es opcional, reutiliza la tienda y la fecha de la revisión y no contiene botones ni enlaces de carpetas compartidas.
+Mejora Operativa reutiliza la tienda y la fecha, pero conserva datos y exportación independientes. No contiene botones ni enlaces de carpetas compartidas.
 
 ## Validación y mantenimiento
 

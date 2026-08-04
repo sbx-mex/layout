@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Starbucks Layouts + Mejora",
+  "name": "Starbucks Lay Out + Mejora Operativa",
   "short_name": "Layouts",
-  "description": "Guía operativa para comparar layouts y documentar mejoras Max–Min en tienda.",
+  "description": "Lay Out principal y Mejora Operativa complementaria con exportaciones independientes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

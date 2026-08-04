@@ -87,37 +87,14 @@
       <div id="variantNavigation" class="variant-navigation">
         <div class="variant-navigation__head">
           <div>
-            <span class="eyebrow">Paso 2 · Layout de referencia</span>
-            <h2>Elige la variante</h2>
-            <p>Usa las flechas o desliza las miniaturas.</p>
+            <span class="eyebrow">Layout de referencia</span>
+            <h2>Selecciona el modelo</h2>
           </div>
           <div class="variant-controls" aria-label="Navegación entre variantes">
             <button id="previousVariant" class="icon-button" type="button" aria-label="Variante anterior">←</button>
             <span id="variantCounter" class="counter" aria-live="polite"></span>
             <button id="nextVariant" class="icon-button" type="button" aria-label="Variante siguiente">→</button>
           </div>
-        </div>
-        <div class="layout-viewer" aria-labelledby="activeLayoutTitle">
-          <div class="layout-viewer__visual">
-            <button id="viewerPrevious" class="viewer-arrow viewer-arrow--previous" type="button" aria-label="Ver layout anterior">←</button>
-            <button id="viewerImageButton" class="layout-viewer__image" type="button" aria-label="Ampliar el layout seleccionado">
-              <img id="viewerImage" alt="" decoding="async">
-              <span class="zoom-hint" aria-hidden="true">Ampliar</span>
-            </button>
-            <button id="viewerNext" class="viewer-arrow viewer-arrow--next" type="button" aria-label="Ver layout siguiente">→</button>
-          </div>
-          <div class="layout-viewer__details">
-            <div>
-              <span class="selection-badge"><span aria-hidden="true">✓</span> Selección activa</span>
-              <h3 id="activeLayoutTitle">ESP 01</h3>
-              <p id="activeLayoutDescription">Vista previa del layout que se utilizará en la comparación.</p>
-            </div>
-            <div class="layout-viewer__actions">
-              <span id="viewerCounter" class="viewer-counter" aria-live="polite">1 de 11</span>
-              <button id="useLayoutButton" class="button" type="button">Usar este layout</button>
-            </div>
-          </div>
-          <div id="variantDots" class="variant-dots" aria-label="Posición dentro de las variantes"></div>
         </div>
         <div class="catalog" id="catalog" role="listbox" aria-label="Variantes de layout" tabindex="0"></div>
       </div>
@@ -133,15 +110,12 @@
         <div class="sheet-title">
           <span class="sheet-icon" aria-hidden="true">✦</span>
           <div>
-            <span class="eyebrow">Paso 3 · Comparación</span>
+            <span class="eyebrow">Lay Out</span>
             <h2 class="main-title" id="mainTitle">Layout operativo</h2>
             <p class="subtitle" id="subTitle">Tienda: Sin definir</p>
           </div>
         </div>
-        <div class="sheet-head__actions pdf-hide">
-          <button id="changeSelectionButton" class="button button--ghost button--compact" type="button">Cambiar selección</button>
-          <div class="meta"><strong>Uso operativo</strong><span id="dateLabel"></span></div>
-        </div>
+        <span id="dateLabel" class="date-label"></span>
       </div>
 
       <div class="compare" id="compare">
@@ -167,13 +141,8 @@
             <span id="photoStatus" class="photo-status pdf-hide">Pendiente</span>
           </div>
           <div class="imgbox dropzone" id="realBox" tabindex="0" role="button" aria-label="Agregar evidencia real con cámara, galería o arrastrando una imagen">
-            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Agrega una foto del área</strong><small>Usa cámara, galería o arrastra aquí</small></div>
+            <div class="empty pdf-hide" id="realEmpty"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong><small>Toca o arrastra una imagen</small></div>
             <img id="realImg" class="hidden" alt="Foto del acomodo real">
-            <div class="photo-actions pdf-hide">
-              <button class="button" type="button" data-photo-action="camera" data-target="real">Tomar foto</button>
-              <button class="button button--secondary" type="button" data-photo-action="attach" data-target="real">Adjuntar</button>
-              <button class="button button--danger hidden" id="clearRealButton" type="button" data-photo-action="clear" data-target="real">Quitar</button>
-            </div>
           </div>
         </article>
 
@@ -183,14 +152,9 @@
             <div class="field"><label for="optName1">Nombre editable</label><input id="optName1" maxlength="80"></div>
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 1</span><h3 id="optTitle1"></h3></div></div>
-          <div class="imgbox dropzone" data-drop-target="opt1">
-            <div class="empty pdf-hide" id="optEmpty1"><span aria-hidden="true">▣</span><strong>Agrega la primera evidencia</strong></div>
+          <div class="imgbox dropzone" data-drop-target="opt1" tabindex="0" role="button" aria-label="Seleccionar primera evidencia">
+            <div class="empty pdf-hide" id="optEmpty1"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong></div>
             <img id="optImg1" class="hidden" alt="Primera evidencia real">
-            <div class="photo-actions pdf-hide">
-              <button class="button" type="button" data-photo-action="camera" data-target="opt1">Tomar foto</button>
-              <button class="button button--secondary" type="button" data-photo-action="attach" data-target="opt1">Adjuntar</button>
-              <button class="button button--danger" type="button" data-photo-action="clear" data-target="opt1">Quitar</button>
-            </div>
           </div>
         </article>
 
@@ -200,31 +164,47 @@
             <div class="field"><label for="optName2">Nombre editable</label><input id="optName2" maxlength="80"></div>
           </div>
           <div class="block-head"><div><span class="eyebrow">Evidencia real 2</span><h3 id="optTitle2"></h3></div></div>
-          <div class="imgbox dropzone" data-drop-target="opt2">
-            <div class="empty pdf-hide" id="optEmpty2"><span aria-hidden="true">▣</span><strong>Agrega la segunda evidencia</strong></div>
+          <div class="imgbox dropzone" data-drop-target="opt2" tabindex="0" role="button" aria-label="Seleccionar segunda evidencia">
+            <div class="empty pdf-hide" id="optEmpty2"><span aria-hidden="true">▣</span><strong>Seleccionar evidencia</strong></div>
             <img id="optImg2" class="hidden" alt="Segunda evidencia real">
-            <div class="photo-actions pdf-hide">
-              <button class="button" type="button" data-photo-action="camera" data-target="opt2">Tomar foto</button>
-              <button class="button button--secondary" type="button" data-photo-action="attach" data-target="opt2">Adjuntar</button>
-              <button class="button button--danger" type="button" data-photo-action="clear" data-target="opt2">Quitar</button>
-            </div>
           </div>
         </article>
       </div>
 
-      <section class="improvement-module pdf-section" id="improvementModule" aria-labelledby="improvementTitle">
+      <div class="sheet-actions pdf-hide">
+        <div class="completion">
+          <span id="completionIcon" aria-hidden="true">○</span>
+          <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
+        </div>
+        <div class="sheet-actions__buttons">
+          <button id="exportButton" class="button button--export" type="button">Exportar Lay Out</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="improvement-workspace" id="mejoraOperativa" aria-labelledby="improvementTitle">
+      <div class="improvement-intro">
+        <div>
+          <span class="eyebrow">Herramienta complementaria</span>
+          <h2>Mejora Operativa</h2>
+          <p>Haz visible la mejora: documenta avances simples que faciliten el acomodo, reduzcan recorridos y fortalezcan la operación diaria.</p>
+        </div>
+        <button id="toggleImprovementButton" class="button button--ghost" type="button" aria-expanded="false" aria-controls="improvementContent">Iniciar mejora</button>
+      </div>
+
+      <section class="improvement-module" id="improvementModule" aria-labelledby="improvementTitle">
         <div class="improvement-module__head">
           <div class="improvement-module__identity">
             <span class="improvement-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3M2 19h20"/></svg>
             </span>
             <div>
-              <span class="eyebrow">Complemento operativo opcional</span>
-              <h2 id="improvementTitle">Comparativo de mejora Max–Min</h2>
-              <p>Documenta el antes y después de Back, gavetas, racks u otros espacios sin salir de la revisión.</p>
+              <span class="eyebrow">Comparativo Antes / Después</span>
+              <h2 id="improvementTitle">Mejora Operativa Max–Min</h2>
+              <p>Registra uno o varios espacios y conserva evidencia clara del avance.</p>
+              <p id="improvementMeta" class="improvement-meta">Tienda: Sin definir</p>
             </div>
           </div>
-          <button id="toggleImprovementButton" class="button button--ghost pdf-hide" type="button" aria-expanded="false" aria-controls="improvementContent">Agregar comparativo</button>
         </div>
 
         <div id="improvementContent" class="improvement-content hidden">
@@ -259,19 +239,13 @@
             <strong>Agrega el primer espacio</strong>
             <span>El comparativo mostrará Antes, Después y una observación breve.</span>
           </div>
+
+          <div class="improvement-actions pdf-hide">
+            <div><strong>Mensaje de mejora continua</strong><span>Cada ajuste visible puede traducirse en una operación más simple, ordenada y sostenible.</span></div>
+            <button id="exportImprovementButton" class="button button--export" type="button">Exportar Mejora Operativa</button>
+          </div>
         </div>
       </section>
-
-      <div class="sheet-actions pdf-hide">
-        <div class="completion">
-          <span id="completionIcon" aria-hidden="true">○</span>
-          <div><strong id="completionTitle">Agrega la evidencia real</strong><small id="completionText">La foto se incluirá en el PDF.</small></div>
-        </div>
-        <div class="sheet-actions__buttons">
-          <button id="editLayoutButton" class="button button--ghost" type="button">Corregir selección</button>
-          <button id="exportButton" class="button button--export" type="button">Exportar PDF</button>
-        </div>
-      </div>
     </section>
   </main>
 
@@ -284,7 +258,7 @@
   <div class="mobile-actions pdf-hide" aria-label="Acciones rápidas">
     <button type="button" data-jump="configuracion">Configurar</button>
     <button type="button" data-jump="sheet">Comparar</button>
-    <button id="mobileExportButton" type="button">Exportar</button>
+    <button type="button" data-jump="mejoraOperativa">Mejora</button>
   </div>
 
   <dialog id="imageDialog" class="image-dialog">
@@ -293,11 +267,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <input id="cameraInput" class="hidden" type="file" accept="image/*" capture="environment">
   <input id="attachInput" class="hidden" type="file" accept="image/*">
-  <input id="optCamera1" class="hidden" type="file" accept="image/*" capture="environment">
   <input id="optAttach1" class="hidden" type="file" accept="image/*">
-  <input id="optCamera2" class="hidden" type="file" accept="image/*" capture="environment">
   <input id="optAttach2" class="hidden" type="file" accept="image/*">
 </body>
 </html>

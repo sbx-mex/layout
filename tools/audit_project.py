@@ -28,13 +28,9 @@ REQUIRED = (
 GENERATED_DIRS = ("tools/__pycache__", "playwright-report", "test-results")
 OBSOLETE_FILES = ("README.txt",)
 VISUAL_SELECTOR_IDS = {
-    "viewerImage",
-    "viewerPrevious",
-    "viewerNext",
-    "viewerCounter",
-    "variantDots",
-    "useLayoutButton",
-    "editLayoutButton",
+    "catalog",
+    "previousVariant",
+    "nextVariant",
     "compareReferenceReel",
     "comparePrevious",
     "compareNext",
@@ -42,6 +38,9 @@ VISUAL_SELECTOR_IDS = {
     "improvementContent",
     "maxminReferenceReel",
     "improvementList",
+    "exportButton",
+    "exportImprovementButton",
+    "improvementMeta",
 }
 
 
@@ -214,6 +213,10 @@ def main() -> int:
     detected_sharing = [term for term in forbidden_sharing if term in combined_source]
     if detected_sharing:
         errors.append(f"Persisten enlaces o acciones compartidas: {', '.join(detected_sharing)}")
+    forbidden_interface = ("tomar foto", ">adjuntar<", ">quitar<", "cambiar selección", "uso operativo", "paso 3")
+    detected_interface = [term for term in forbidden_interface if term in combined_source]
+    if detected_interface:
+        errors.append(f"Persisten instrucciones o botones redundantes: {', '.join(detected_interface)}")
     if '<html lang="es">' not in html or "skip-link" not in html:
         errors.append("Faltan metadatos o navegación accesible")
     if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
@@ -222,9 +225,13 @@ def main() -> int:
         errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
     if "serviceWorker.register" not in js or '"sw.js"' not in js:
         errors.append("app.js no registra el service worker")
-    for behavior in ("renderActiveLayout", "renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "pointerup", "editLayoutButton"):
+    for behavior in ("renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "exportLayoutPdf", "exportImprovementPdf"):
         if behavior not in js:
             errors.append(f"Falta comportamiento de navegación visual: {behavior}")
+    if '$("sheet")' not in js or '$("improvementModule")' not in js:
+        errors.append("Las exportaciones no tienen superficies independientes")
+    if "improvementModule" in html[html.find('id="sheet"'):html.find('id="mejoraOperativa"')]:
+        errors.append("Mejora Operativa continúa anidada dentro de Lay Out")
     for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json"):
         if shell_file not in service_worker:
             errors.append(f"El shell sin conexión no incluye {shell_file}")

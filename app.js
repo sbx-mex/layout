@@ -3,9 +3,9 @@
 const DATA_URL = "data/layouts.json";
 const STORAGE_KEY = "layout-preferences-v3";
 const PHOTO_TARGETS = {
-  real: { img: "realImg", empty: "realEmpty", camera: "cameraInput", attach: "attachInput" },
-  opt1: { img: "optImg1", empty: "optEmpty1", camera: "optCamera1", attach: "optAttach1" },
-  opt2: { img: "optImg2", empty: "optEmpty2", camera: "optCamera2", attach: "optAttach2" }
+  real: { img: "realImg", empty: "realEmpty", input: "attachInput" },
+  opt1: { img: "optImg1", empty: "optEmpty1", input: "optAttach1" },
+  opt2: { img: "optImg2", empty: "optEmpty2", input: "optAttach2" }
 };
 
 const $ = id => document.getElementById(id);
@@ -24,8 +24,6 @@ let installPrompt = null;
 let toastTimer = null;
 let saveTimer = null;
 let preferences = {};
-let viewerPointerStart = null;
-let viewerWasDragged = false;
 
 function getCampaign() {
   return campaigns.find(item => item.id === $("campaignSelect").value) || campaigns[0];
@@ -214,7 +212,6 @@ function renderCatalog() {
   $("variantCounter").textContent = `${selectedVariant + 1} / ${station.variants}`;
   $("previousVariant").disabled = selectedVariant === 0;
   $("nextVariant").disabled = selectedVariant === station.variants - 1;
-  renderActiveLayout();
 }
 
 function createReelThumb({ image, label, active, onSelect }) {
@@ -293,7 +290,7 @@ function toggleImprovement(force) {
   improvementEnabled = typeof force === "boolean" ? force : !improvementEnabled;
   $("improvementContent").classList.toggle("hidden", !improvementEnabled);
   $("toggleImprovementButton").setAttribute("aria-expanded", String(improvementEnabled));
-  $("toggleImprovementButton").textContent = improvementEnabled ? "Cerrar comparativo" : "Agregar comparativo";
+  $("toggleImprovementButton").textContent = improvementEnabled ? "Cerrar mejora" : "Iniciar mejora";
   if (improvementEnabled && improvementItems.length === 0) addImprovement();
   updateCompletion();
 }
@@ -307,14 +304,11 @@ function addImprovement() {
 
 function improvementPhoto(item, kind, label) {
   const source = item[kind];
-  return `<div class="improvement-photo${source ? " has-photo" : ""}">
-    <div class="improvement-photo__head"><strong>${label}</strong>${source ? `<button class="button button--text" type="button" data-improvement-clear="${kind}" data-improvement-id="${item.id}">Quitar</button>` : ""}</div>
+  return `<label class="improvement-photo${source ? " has-photo" : ""}">
+    <div class="improvement-photo__head"><strong>${label}</strong><span class="pdf-hide">${source ? "Cambiar evidencia" : "Seleccionar evidencia"}</span></div>
     <div class="improvement-photo__preview">${source ? `<img src="${source}" alt="${label} de ${escapeHtml(item.area)}">` : `<span aria-hidden="true">▣</span><small>Sin evidencia</small>`}</div>
-    <div class="improvement-photo__actions pdf-hide">
-      <label class="button button--ghost">Cámara<input class="hidden" type="file" accept="image/*" capture="environment" data-improvement-file="${kind}" data-improvement-id="${item.id}"></label>
-      <label class="button button--ghost">Galería<input class="hidden" type="file" accept="image/*" data-improvement-file="${kind}" data-improvement-id="${item.id}"></label>
-    </div>
-  </div>`;
+    <input class="hidden" type="file" accept="image/*" data-improvement-file="${kind}" data-improvement-id="${item.id}">
+  </label>`;
 }
 
 function renderImprovementList() {
@@ -346,32 +340,6 @@ async function loadImprovementPhoto(file, id, kind) {
   } catch (error) { announce(error.message || "No fue posible abrir la imagen."); }
 }
 
-function renderActiveLayout() {
-  const station = getStation();
-  if (station.optional) return;
-  const label = variantLabel();
-  const image = $("viewerImage");
-  image.alt = `Vista previa del layout ${label}`;
-  image.src = imagePath();
-  image.onerror = () => { image.onerror = null; image.src = placeholder(label); };
-  $("activeLayoutTitle").textContent = label;
-  $("activeLayoutDescription").textContent = `${station.name} · Esta referencia se mostrará en la comparación y en el PDF.`;
-  $("viewerCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
-  $("viewerPrevious").disabled = selectedVariant === 0;
-  $("viewerNext").disabled = selectedVariant === station.variants - 1;
-  const dots = $("variantDots");
-  dots.replaceChildren();
-  for (let index = 0; index < station.variants; index += 1) {
-    const dot = document.createElement("button");
-    dot.type = "button";
-    dot.className = `variant-dot${index === selectedVariant ? " active" : ""}`;
-    dot.setAttribute("aria-label", `Ver ${variantLabel(index)}`);
-    dot.setAttribute("aria-current", index === selectedVariant ? "true" : "false");
-    dot.addEventListener("click", () => selectVariant(index));
-    dots.append(dot);
-  }
-}
-
 function selectVariant(index, focus = false) {
   const station = getStation();
   selectedVariant = Math.max(0, Math.min(index, station.variants - 1));
@@ -387,8 +355,7 @@ function hasPhoto(target) {
 }
 
 function reviewReady() {
-  const layoutReady = getStation().optional ? hasPhoto("opt1") && hasPhoto("opt2") : hasPhoto("real");
-  return layoutReady && improvementReady();
+  return getStation().optional ? hasPhoto("opt1") && hasPhoto("opt2") : hasPhoto("real");
 }
 
 function updateProgress() {
@@ -404,14 +371,12 @@ function updateProgress() {
 function updateCompletion() {
   const station = getStation();
   const ready = reviewReady();
-  const improvementPending = improvementEnabled && !improvementReady();
-  $("completionTitle").textContent = ready ? "Comparación lista para exportar" : improvementPending ? "Completa el Antes y Después" : station.optional ? "Agrega las dos evidencias" : "Agrega la evidencia real";
-  $("completionText").textContent = ready ? "Revisa el contenido y genera el PDF." : improvementPending ? "El comparativo Max–Min está activo y tiene evidencia pendiente." : "Puedes exportar ahora o completar la evidencia primero.";
+  $("completionTitle").textContent = ready ? "Lay Out listo para exportar" : station.optional ? "Agrega las dos evidencias" : "Agrega la evidencia real";
+  $("completionText").textContent = ready ? "La exportación será limpia y de una sola página." : "Puedes tocar el área de evidencia para seleccionar una imagen.";
   $("completionIcon").textContent = ready ? "✓" : "○";
   $("completionIcon").classList.toggle("ready", ready);
   $("photoStatus").textContent = hasPhoto("real") ? "Lista" : "Pendiente";
   $("photoStatus").classList.toggle("ready", hasPhoto("real"));
-  $("clearRealButton").classList.toggle("hidden", !hasPhoto("real"));
   updateProgress();
 }
 
@@ -424,6 +389,7 @@ function updateView() {
   $("dateLabel").textContent = formatDate();
   $("mainTitle").textContent = `Layout · ${campaign.label} ${campaign.icon}`;
   $("subTitle").textContent = `Tienda: ${store} · ${optional ? "Áreas" : "Estación"}: ${label}`;
+  $("improvementMeta").textContent = `Tienda: ${store} · ${formatDate()}`;
   $("selectionSummary").textContent = `${store} · ${campaign.label} · ${station.shortName}`;
   $("theoryBlock").classList.toggle("hidden", optional);
   $("realBlock").classList.toggle("hidden", optional);
@@ -488,8 +454,7 @@ function clearPhoto(target, announceChange = true) {
   $(item.img).removeAttribute("src");
   $(item.img).classList.add("hidden");
   $(item.empty).classList.remove("hidden");
-  $(item.camera).value = "";
-  $(item.attach).value = "";
+  $(item.input).value = "";
   updateCompletion();
   if (announceChange) announce("Evidencia retirada.");
 }
@@ -505,17 +470,6 @@ function openTheoryDialog() {
   if (typeof dialog.showModal === "function") dialog.showModal();
 }
 
-function openViewerDialog() {
-  if (viewerWasDragged) {
-    viewerWasDragged = false;
-    return;
-  }
-  const dialog = $("imageDialog");
-  $("dialogImage").src = $("viewerImage").src;
-  $("dialogTitle").textContent = `Layout de referencia · ${variantLabel()}`;
-  if (typeof dialog.showModal === "function") dialog.showModal();
-}
-
 function loadPdfLibrary() {
   if (window.html2pdf) return Promise.resolve();
   return new Promise((resolve, reject) => {
@@ -527,13 +481,13 @@ function loadPdfLibrary() {
   });
 }
 
-async function exportPdf() {
+async function exportLayoutPdf() {
   const button = $("exportButton");
   const station = getStation();
   const name = station.optional ? `${optionalName(1)}_${optionalName(2)}` : variantLabel();
   const filename = `Layout_${cleanFilename(name)}_${cleanFilename($("storeName").value.trim() || "Tienda")}.pdf`;
   const sheet = $("sheet");
-  if (!reviewReady() && !window.confirm("La evidencia está incompleta. ¿Deseas exportar el layout de todos modos?")) return;
+  if (!reviewReady() && !window.confirm("La evidencia está incompleta. ¿Deseas exportar el Lay Out de todos modos?")) return;
   button.disabled = true;
   button.textContent = "Generando…";
   try {
@@ -546,10 +500,10 @@ async function exportPdf() {
       image: { type: "jpeg", quality: .96 },
       html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"], avoid: [".block", ".improvement-card"] }
+      pagebreak: { mode: ["css", "legacy"], avoid: [".block"] }
     }).from(sheet).toPdf();
     await worker.save();
-    announce("PDF generado correctamente.");
+    announce("Lay Out exportado en una sola página.");
   } catch (error) {
     announce(`${error.message} Se abrirá la impresión del navegador.`);
     window.print();
@@ -557,7 +511,42 @@ async function exportPdf() {
     sheet.classList.remove("pdf-export");
     document.body.classList.remove("is-exporting");
     button.disabled = false;
-    button.textContent = "Exportar PDF";
+    button.textContent = "Exportar Lay Out";
+  }
+}
+
+async function exportImprovementPdf() {
+  const button = $("exportImprovementButton");
+  if (!improvementEnabled || improvementItems.length === 0) {
+    announce("Agrega al menos un espacio de mejora antes de exportar.");
+    return;
+  }
+  if (!improvementReady() && !window.confirm("Hay evidencia Antes o Después pendiente. ¿Deseas exportar la mejora de todos modos?")) return;
+  const store = cleanFilename($("storeName").value.trim() || "Tienda");
+  const filename = `Mejora_Operativa_${store}.pdf`;
+  const module = $("improvementModule");
+  button.disabled = true;
+  button.textContent = "Generando…";
+  try {
+    await loadPdfLibrary();
+    module.classList.add("improvement-export");
+    document.body.classList.add("is-exporting");
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await window.html2pdf().set({
+      margin: [.35, .35, .4, .35], filename,
+      image: { type: "jpeg", quality: .96 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"], avoid: [".improvement-card"] }
+    }).from(module).save();
+    announce("Mejora Operativa exportada por separado.");
+  } catch (error) {
+    announce(`${error.message} Intenta nuevamente con conexión.`);
+  } finally {
+    module.classList.remove("improvement-export");
+    document.body.classList.remove("is-exporting");
+    button.disabled = false;
+    button.textContent = "Exportar Mejora Operativa";
   }
 }
 
@@ -585,26 +574,8 @@ function bindEvents() {
   });
   $("previousVariant").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("nextVariant").addEventListener("click", () => selectVariant(selectedVariant + 1));
-  $("viewerPrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
-  $("viewerNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
   $("comparePrevious").addEventListener("click", () => selectVariant(selectedVariant - 1));
   $("compareNext").addEventListener("click", () => selectVariant(selectedVariant + 1));
-  $("viewerImageButton").addEventListener("click", openViewerDialog);
-  $("viewerImageButton").addEventListener("pointerdown", event => { viewerPointerStart = event.clientX; });
-  $("viewerImageButton").addEventListener("pointerup", event => {
-    if (viewerPointerStart === null) return;
-    const distance = event.clientX - viewerPointerStart;
-    viewerPointerStart = null;
-    if (Math.abs(distance) < 55) return;
-    event.preventDefault();
-    viewerWasDragged = true;
-    selectVariant(selectedVariant + (distance < 0 ? 1 : -1));
-  });
-  $("viewerImageButton").addEventListener("pointercancel", () => { viewerPointerStart = null; });
-  $("useLayoutButton").addEventListener("click", () => {
-    announce(`${variantLabel()} listo para comparar.`);
-    jumpTo("sheet");
-  });
   $("catalog").addEventListener("keydown", event => {
     const keys = { ArrowLeft: -1, ArrowRight: 1 };
     if (event.key in keys) { event.preventDefault(); selectVariant(selectedVariant + keys[event.key], true); }
@@ -631,13 +602,8 @@ function bindEvents() {
   });
   $("improvementList").addEventListener("click", event => {
     const remove = event.target.closest("[data-improvement-remove]");
-    const clear = event.target.closest("[data-improvement-clear]");
     if (remove) improvementItems = improvementItems.filter(item => item.id !== Number(remove.dataset.improvementRemove));
-    if (clear) {
-      const item = improvementItems.find(candidate => candidate.id === Number(clear.dataset.improvementId));
-      if (item) item[clear.dataset.improvementClear] = null;
-    }
-    if (remove || clear) { renderImprovementList(); updateCompletion(); }
+    if (remove) { renderImprovementList(); updateCompletion(); }
   });
   $("improvementList").addEventListener("input", event => {
     const areaId = Number(event.target.dataset.improvementArea);
@@ -656,27 +622,21 @@ function bindEvents() {
     });
     $(`optName${number}`).addEventListener("input", updateView);
   });
-  document.querySelectorAll("[data-photo-action]").forEach(button => button.addEventListener("click", () => {
-    const { photoAction, target } = button.dataset;
-    if (photoAction === "clear") clearPhoto(target);
-    else $(PHOTO_TARGETS[target][photoAction]).click();
-  }));
   Object.entries(PHOTO_TARGETS).forEach(([target, item]) => {
-    $(item.camera).addEventListener("change", event => loadPhoto(event.target.files[0], target));
-    $(item.attach).addEventListener("change", event => loadPhoto(event.target.files[0], target));
+    $(item.input).addEventListener("change", event => loadPhoto(event.target.files[0], target));
   });
   bindDropzone($("realBox"), "real");
   document.querySelectorAll("[data-drop-target]").forEach(element => bindDropzone(element, element.dataset.dropTarget));
+  $("realBox").addEventListener("click", () => $("attachInput").click());
+  document.querySelectorAll("[data-drop-target]").forEach(element => element.addEventListener("click", () => $(PHOTO_TARGETS[element.dataset.dropTarget].input).click()));
   $("realBox").addEventListener("keydown", event => {
     if ((event.key === "Enter" || event.key === " ") && !hasPhoto("real")) { event.preventDefault(); $("attachInput").click(); }
   });
   document.querySelectorAll("[data-jump]").forEach(button => button.addEventListener("click", () => jumpTo(button.dataset.jump)));
   $("startButton").addEventListener("click", () => jumpTo("configuracion"));
   $("continueButton").addEventListener("click", () => jumpTo("sheet"));
-  $("changeSelectionButton").addEventListener("click", () => jumpTo("configuracion"));
-  $("editLayoutButton").addEventListener("click", () => jumpTo("variantNavigation"));
-  $("exportButton").addEventListener("click", exportPdf);
-  $("mobileExportButton").addEventListener("click", exportPdf);
+  $("exportButton").addEventListener("click", exportLayoutPdf);
+  $("exportImprovementButton").addEventListener("click", exportImprovementPdf);
   $("zoomTheoryButton").addEventListener("click", openTheoryDialog);
   $("theoryImageButton").addEventListener("click", openTheoryDialog);
   $("closeDialogButton").addEventListener("click", () => $("imageDialog").close());
@@ -698,7 +658,7 @@ function bindEvents() {
     improvementSequence = 1;
     $("improvementContent").classList.add("hidden");
     $("toggleImprovementButton").setAttribute("aria-expanded", "false");
-    $("toggleImprovementButton").textContent = "Agregar comparativo";
+    $("toggleImprovementButton").textContent = "Iniciar mejora";
     renderImprovementList();
     renderRecentStations();
     clearAllPhotos();
