@@ -9,7 +9,7 @@ Conjunto de dos herramientas complementarias: Lay Out como función principal y 
 3. Toca el recuadro de evidencia o arrastra la fotografía del acomodo real.
 4. Amplía el layout si necesitas revisar detalles.
 5. Exporta Lay Out en una sola página limpia.
-6. Cuando aplique, activa Mejora Operativa, documenta uno o varios espacios y expórtalos en un PDF independiente.
+6. Cuando aplique, cambia a Mejora Operativa, documenta uno o varios espacios y expórtalos en un PDF independiente.
 
 La selección se conserva localmente en el dispositivo. Las fotografías se procesan en el navegador y no se envían ni se guardan de forma permanente.
 
@@ -32,15 +32,15 @@ El catálogo de referencias mantiene visibles todas las variantes en escritorio 
 ## 10 mejoras de esta versión
 
 1. Catálogo completo y persistente: seleccionar nunca oculta las alternativas.
-2. Selector directo sincronizado para saltar a cualquier modelo.
+2. Miniaturas sincronizadas para saltar directamente a cualquier modelo.
 3. Flechas en ciclo continuo del último modelo al primero.
 4. Deslizamiento táctil sobre la referencia principal.
-5. Cambio inmediato y único de modelo, título, contador y PDF.
+5. Cambio inmediato y único de modelo, título y PDF.
 6. Regreso directo al catálogo sin perder la evidencia cargada.
 7. Estado activo de alto contraste y navegación accesible por teclado.
-8. Lay Out ajustado explícitamente a una sola hoja A4 limpia.
-9. Mejora Operativa independiente, con una página por Antes/Después.
-10. Auditoría Python reforzada, pie cercano y canal directo de sugerencias.
+8. Lay Out dibujado directamente en una sola hoja A4, sin captura de pantalla ni enlaces.
+9. Mejora Operativa en una vista independiente, con una página por Antes/Después.
+10. Generador PDF local y disponible sin conexión, auditado con Python.
 
 ## Validación y mantenimiento
 
@@ -59,6 +59,6 @@ La depuración nunca elimina una imagen declarada en `data/layouts.json`, aunque
 
 ## Publicación
 
-El proyecto es estático y puede publicarse directamente con GitHub Pages. Conserva `index.html`, `app.js`, `styles.css`, `sw.js`, `manifest.json`, `data/`, `assets/` e `icons/` en la raíz.
+El proyecto es estático y puede publicarse directamente con GitHub Pages. Conserva `index.html`, `app.js`, `styles.css`, `sw.js`, `manifest.json`, `data/`, `assets/`, `icons/` y `vendor/` en la raíz.
 
 Diseño: Jorge Alcantar Aguiar & Enrique César Flores. Comentarios y/o Sugerencias: <https://wa.me/message/ENKDSAHYHIGAN1>

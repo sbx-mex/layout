@@ -1,11 +1,12 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v11";
+const CACHE = "starbucks-layouts-v12-pdf-local";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./vendor/jspdf.umd.min.js",
   "./manifest.json",
   "./data/layouts.json",
   "./assets/juntemonos-mas.png",

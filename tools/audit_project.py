@@ -19,6 +19,7 @@ REQUIRED = (
     "index.html",
     "styles.css",
     "app.js",
+    "vendor/jspdf.umd.min.js",
     "sw.js",
     "manifest.json",
     "data/layouts.json",
@@ -43,6 +44,9 @@ VISUAL_SELECTOR_IDS = {
     "exportImprovementButton",
     "improvementMeta",
     "improvementPageCount",
+    "layoutWorkspace",
+    "layoutToolButton",
+    "improvementToolButton",
 }
 
 
@@ -240,8 +244,8 @@ def main() -> int:
     for action in ("camera", "attach", "delete"):
         if f'data-photo-action="{action}"' not in html:
             errors.append(f"Falta acción fotográfica: {action}")
-    if ".is-exporting .pdf-hide" not in css:
-        errors.append("La exportación no excluye explícitamente los controles operativos")
+    if "@media print" not in css or 'body[data-active-tool="layout"]' not in css:
+        errors.append("Guardar como PDF desde el navegador no está protegido por herramienta activa")
     if '<html lang="es">' not in html or "skip-link" not in html:
         errors.append("Faltan metadatos o navegación accesible")
     if "prefers-reduced-motion" not in css or ":focus-visible" not in css:
@@ -250,27 +254,38 @@ def main() -> int:
         errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
     if "serviceWorker.register" not in js or '"sw.js"' not in js:
         errors.append("app.js no registra el service worker")
-    for behavior in ("renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "exportLayoutPdf", "buildImprovementExportSurface", "exportImprovementPdf"):
+    for behavior in ("renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "setToolView", "exportLayoutPdf", "buildLayoutExportDocument", "buildImprovementExportDocument", "exportImprovementPdf"):
         if behavior not in js:
             errors.append(f"Falta comportamiento de navegación visual: {behavior}")
     if 'window.jspdf.jsPDF' not in js or 'pdf.addPage("a4", "portrait")' not in js:
         errors.append("La exportación no garantiza una página independiente por comparativo")
-    if "buildLayoutExportSurface" not in js or 'const canvas = await window.html2canvas(surface' not in js or 'pdf.save(filename)' not in js:
-        errors.append("Lay Out no garantiza una superficie limpia de exportación en una sola página")
-    if "layout-export-surface" not in css or "layout-export-grid" not in css:
-        errors.append("Falta la composición A4 independiente para Lay Out")
+    if "buildLayoutExportDocument" not in js or 'format: "a4"' not in js or 'pdf.save(filename)' not in js:
+        errors.append("Lay Out no garantiza un documento A4 directo de una sola página")
+    if "drawPdfImageContain" not in js or "Math.min(width / properties.width, height / properties.height)" not in js:
+        errors.append("Las fotografías del PDF no conservan su proporción dentro del marco")
     if "window.print()" in js:
         errors.append("La exportación conserva un fallback de impresión que puede incluir enlaces o páginas extra")
-    layout_export_source = js[js.find("function buildLayoutExportSurface"):js.find("async function waitForSurfaceImages")]
-    if "href=" in layout_export_source or "<a " in layout_export_source:
+    if "html2canvas" in js or "html2pdf" in combined_source or "cdnjs.cloudflare.com" in combined_source:
+        errors.append("La exportación conserva una captura HTML o dependencia remota inestable")
+    if '<script defer src="vendor/jspdf.umd.min.js"></script>' not in html:
+        errors.append("index.html no carga el generador PDF local")
+    vendor_pdf = ROOT / "vendor" / "jspdf.umd.min.js"
+    if vendor_pdf.is_file() and vendor_pdf.stat().st_size < 300_000:
+        errors.append("El generador PDF local está incompleto")
+    layout_export_source = js[js.find("async function buildLayoutExportDocument"):js.find("async function exportLayoutPdf")]
+    if "href=" in layout_export_source or "<a " in layout_export_source or "pdf.link" in layout_export_source:
         errors.append("La superficie PDF de Lay Out contiene hipervínculos")
-    if "grid-template-rows:minmax(0,.9fr) minmax(0,1.1fr)" not in css:
-        errors.append("La hoja PDF no prioriza el marco de la fotografía real")
-    if "buildLayoutExportSurface" not in js or "buildImprovementExportSurface" not in js:
+    if 'drawPdfCard(pdf, cards[0], 8, 32, 194, 112' not in js or 'drawPdfCard(pdf, cards[1], 8, 148, 194, 135' not in js:
+        errors.append("La hoja PDF no reserva una superficie mayor para la fotografía real")
+    if 'pdf.internal.getNumberOfPages() !== 1' not in js:
+        errors.append("Lay Out no bloquea regresiones de más de una página")
+    if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:
         errors.append("Las exportaciones no tienen superficies independientes")
+    if 'id="layoutWorkspace"' not in html or 'data-tool-view="improvement"' not in html:
+        errors.append("Lay Out y Mejora Operativa no están separados en vistas propias")
     if "improvementModule" in html[html.find('id="sheet"'):html.find('id="mejoraOperativa"')]:
         errors.append("Mejora Operativa continúa anidada dentro de Lay Out")
-    for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json"):
+    for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json", "vendor/jspdf.umd.min.js"):
         if shell_file not in service_worker:
             errors.append(f"El shell sin conexión no incluye {shell_file}")
 

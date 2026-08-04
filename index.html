@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preload" href="data/layouts.json" as="fetch" crossorigin="anonymous">
   <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/jspdf.umd.min.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
@@ -33,14 +34,18 @@
         <button id="installButton" class="button button--ghost button--compact hidden" type="button">Instalar</button>
       </div>
     </div>
-    <nav class="step-nav" aria-label="Progreso de la revisión">
-      <button class="step-nav__item current" type="button" data-jump="configuracion" data-step="1"><span>1</span><strong>Configurar</strong></button>
-      <button class="step-nav__item" type="button" data-jump="referenceSelector" data-step="2"><span>2</span><strong>Elegir referencia</strong></button>
-      <button class="step-nav__item" type="button" data-jump="sheet" data-step="3"><span>3</span><strong>Comparar</strong></button>
+    <nav class="tool-switch" aria-label="Selecciona una herramienta">
+      <button id="layoutToolButton" class="tool-switch__item active" type="button" data-tool="layout" aria-pressed="true">
+        <span aria-hidden="true">▦</span><strong>Lay Out</strong><small>Referencia vs. acomodo real</small>
+      </button>
+      <button id="improvementToolButton" class="tool-switch__item" type="button" data-tool="improvement" aria-pressed="false">
+        <span aria-hidden="true">↗</span><strong>Mejora Operativa</strong><small>Antes | Después</small>
+      </button>
     </nav>
   </header>
 
   <main class="app" id="workspace">
+    <div id="layoutWorkspace" class="tool-workspace" data-tool-view="layout">
     <section class="hero" id="inicio" aria-labelledby="heroTitle">
       <div class="hero__copy">
         <span class="eyebrow">Herramienta operativa</span>
@@ -191,8 +196,9 @@
         </div>
       </div>
     </section>
+    </div>
 
-    <section class="improvement-workspace" id="mejoraOperativa" aria-labelledby="improvementTitle">
+    <section class="improvement-workspace hidden" id="mejoraOperativa" data-tool-view="improvement" aria-labelledby="improvementTitle">
       <div class="improvement-intro">
         <div>
           <span class="eyebrow">Herramienta complementaria</span>
@@ -269,9 +275,9 @@
   </footer>
 
   <div class="mobile-actions pdf-hide" aria-label="Acciones rápidas">
-    <button type="button" data-jump="configuracion">Configurar</button>
+    <button type="button" data-tool="layout">Lay Out</button>
     <button type="button" data-jump="sheet">Comparar</button>
-    <button type="button" data-jump="mejoraOperativa">Mejora</button>
+    <button type="button" data-tool="improvement">Mejora</button>
   </div>
 
   <dialog id="imageDialog" class="image-dialog">

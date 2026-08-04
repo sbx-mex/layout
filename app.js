@@ -20,6 +20,7 @@ let selectedImprovementReference = 0;
 let improvementItems = [];
 let improvementSequence = 1;
 let improvementEnabled = false;
+let activeTool = "layout";
 let installPrompt = null;
 let toastTimer = null;
 let saveTimer = null;
@@ -74,6 +75,24 @@ function jumpTo(id) {
   if (!target || target.classList.contains("hidden")) return;
   target.scrollIntoView({ behavior: "smooth", block: "start" });
   window.setTimeout(() => target.querySelector("input, select, button, [tabindex]")?.focus({ preventScroll: true }), 450);
+}
+
+function setToolView(tool, shouldFocus = true) {
+  activeTool = tool === "improvement" ? "improvement" : "layout";
+  const showImprovement = activeTool === "improvement";
+  $("layoutWorkspace").classList.toggle("hidden", showImprovement);
+  $("mejoraOperativa").classList.toggle("hidden", !showImprovement);
+  document.body.dataset.activeTool = activeTool;
+  document.querySelectorAll("[data-tool]").forEach(button => {
+    const active = button.dataset.tool === activeTool;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (showImprovement && !improvementEnabled) toggleImprovement(true);
+  if (!shouldFocus) return;
+  const target = showImprovement ? $("mejoraOperativa") : $("layoutWorkspace");
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.setTimeout(() => target.querySelector("button, input, select, [tabindex]")?.focus({ preventScroll: true }), 350);
 }
 
 function placeholder(label) {
@@ -378,16 +397,6 @@ function reviewReady() {
   return getStation().optional ? hasPhoto("opt1") && hasPhoto("opt2") : hasPhoto("real");
 }
 
-function updateProgress() {
-  const storeReady = Boolean($("storeName").value.trim());
-  const ready = reviewReady();
-  document.querySelectorAll(".step-nav__item").forEach(item => {
-    const step = Number(item.dataset.step);
-    item.classList.toggle("complete", (step === 1 && storeReady) || (step === 2 && storeReady) || (step === 3 && ready));
-    item.classList.toggle("current", !ready && ((step === 1 && !storeReady) || (step === 3 && storeReady)) || (ready && step === 3));
-  });
-}
-
 function updateCompletion() {
   const station = getStation();
   const ready = reviewReady();
@@ -397,7 +406,6 @@ function updateCompletion() {
   $("completionIcon").classList.toggle("ready", ready);
   $("photoStatus").textContent = hasPhoto("real") ? "Lista" : "Pendiente";
   $("photoStatus").classList.toggle("ready", hasPhoto("real"));
-  updateProgress();
 }
 
 function updateView() {
@@ -492,130 +500,206 @@ function openTheoryDialog() {
 }
 
 function loadPdfLibrary() {
-  if (window.html2canvas && window.jspdf?.jsPDF) return Promise.resolve();
+  return window.jspdf?.jsPDF
+    ? Promise.resolve()
+    : Promise.reject(new Error("El generador PDF local no está disponible. Actualiza la aplicación e intenta nuevamente."));
+}
+
+function fileToDataUrl(blob) {
   return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-    script.onload = () => window.html2canvas && window.jspdf?.jsPDF
-      ? resolve()
-      : reject(new Error("El generador de PDF no se inicializó correctamente."));
-    script.onerror = () => reject(new Error("Sin conexión para cargar el generador de PDF."));
-    document.head.append(script);
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("No fue posible preparar una imagen para el PDF."));
+    reader.readAsDataURL(blob);
   });
 }
 
-function layoutExportCard(eyebrow, title, source, alt) {
-  return `<article class="layout-export-card">
-    <header><span>${escapeHtml(eyebrow)}</span><strong>${escapeHtml(title)}</strong></header>
-    <div class="layout-export-image">${source
-      ? `<img src="${source}" alt="${escapeHtml(alt)}">`
-      : `<div class="layout-export-empty">Sin evidencia fotográfica</div>`}</div>
-  </article>`;
+async function pdfImageSource(source) {
+  if (!source) return null;
+  if (source.startsWith("data:image/")) return source;
+  const response = await fetch(source, { cache: "force-cache" });
+  if (!response.ok) throw new Error(`No fue posible cargar ${source}.`);
+  return fileToDataUrl(await response.blob());
 }
 
-function buildLayoutExportSurface() {
+function pdfImageFormat(source) {
+  return /^data:image\/png/i.test(source) ? "PNG" : "JPEG";
+}
+
+function fitPdfText(pdf, value, maxWidth) {
+  const original = String(value || "");
+  if (pdf.getTextWidth(original) <= maxWidth) return original;
+  let fitted = original;
+  while (fitted.length > 1 && pdf.getTextWidth(`${fitted}...`) > maxWidth) fitted = fitted.slice(0, -1);
+  return `${fitted.trimEnd()}...`;
+}
+
+function drawPdfImageContain(pdf, source, x, y, width, height, alias) {
+  if (!source) {
+    pdf.setFillColor(243, 247, 245);
+    pdf.roundedRect(x, y, width, height, 2.4, 2.4, "F");
+    pdf.setTextColor(100, 126, 116);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.text("Sin evidencia fotográfica", x + width / 2, y + height / 2, { align: "center" });
+    return;
+  }
+  const properties = pdf.getImageProperties(source);
+  const scale = Math.min(width / properties.width, height / properties.height);
+  const imageWidth = properties.width * scale;
+  const imageHeight = properties.height * scale;
+  const imageX = x + (width - imageWidth) / 2;
+  const imageY = y + (height - imageHeight) / 2;
+  pdf.setFillColor(255, 255, 255);
+  pdf.rect(x, y, width, height, "F");
+  pdf.addImage(source, pdfImageFormat(source), imageX, imageY, imageWidth, imageHeight, alias, "FAST");
+}
+
+function drawPdfHeader(pdf, eyebrow, title, subtitle, store) {
+  pdf.setDrawColor(0, 98, 65);
+  pdf.setLineWidth(.8);
+  pdf.line(8, 28, 202, 28);
+  pdf.setTextColor(0, 98, 65);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8.5);
+  pdf.text(eyebrow.toUpperCase(), 8, 11);
+  pdf.setFontSize(19);
+  pdf.text(title, 8, 18.5);
+  pdf.setTextColor(30, 57, 50);
+  pdf.setFontSize(9.5);
+  pdf.text(fitPdfText(pdf, subtitle, 137), 8, 24);
+  pdf.setTextColor(0, 98, 65);
+  pdf.setFontSize(9);
+  pdf.text("STARBUCKS", 202, 12, { align: "right" });
+  pdf.setTextColor(85, 111, 101);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.text(fitPdfText(pdf, store, 48), 202, 18, { align: "right" });
+  pdf.text(formatDate(), 202, 23, { align: "right" });
+}
+
+function drawPdfFooter(pdf, left, right) {
+  pdf.setDrawColor(205, 222, 214);
+  pdf.setLineWidth(.25);
+  pdf.line(8, 287, 202, 287);
+  pdf.setTextColor(0, 98, 65);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.5);
+  pdf.text(left, 8, 291.5);
+  pdf.setTextColor(85, 111, 101);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(right, 202, 291.5, { align: "right" });
+}
+
+function drawPdfCard(pdf, card, x, y, width, height, alias) {
+  pdf.setDrawColor(190, 216, 204);
+  pdf.setLineWidth(.35);
+  pdf.roundedRect(x, y, width, height, 3.2, 3.2, "S");
+  pdf.setTextColor(0, 98, 65);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(7.5);
+  pdf.text(card.eyebrow.toUpperCase(), x + 3.5, y + 5.5);
+  pdf.setFontSize(13.5);
+  pdf.text(fitPdfText(pdf, card.title, width - 7), x + 3.5, y + 11.2);
+  pdf.setDrawColor(0, 98, 65);
+  pdf.setLineWidth(.45);
+  pdf.line(x + 3.5, y + 14, x + width - 3.5, y + 14);
+  drawPdfImageContain(pdf, card.source, x + 3.5, y + 17, width - 7, height - 20.5, alias);
+}
+
+async function buildLayoutExportDocument() {
   const station = getStation();
   const campaign = getCampaign();
   const store = $("storeName").value.trim() || "Tienda sin definir";
   const optional = Boolean(station.optional);
   const label = optional ? `${optionalName(1)} / ${optionalName(2)}` : variantLabel();
-  const surface = document.createElement("section");
-  surface.className = "layout-export-surface";
-  surface.setAttribute("aria-hidden", "true");
-  const cards = optional
+  const cardData = optional
     ? [
-        layoutExportCard("Evidencia real 1", optionalName(1), hasPhoto("opt1") ? $("optImg1").src : "", `Evidencia real de ${optionalName(1)}`),
-        layoutExportCard("Evidencia real 2", optionalName(2), hasPhoto("opt2") ? $("optImg2").src : "", `Evidencia real de ${optionalName(2)}`)
+        { eyebrow: "Evidencia real 1", title: optionalName(1), source: hasPhoto("opt1") ? $("optImg1").src : "" },
+        { eyebrow: "Evidencia real 2", title: optionalName(2), source: hasPhoto("opt2") ? $("optImg2").src : "" }
       ]
     : [
-        layoutExportCard("Referencia", label, $("theoryImg").src, `Layout de referencia ${label}`),
-        layoutExportCard("Evidencia real", label, hasPhoto("real") ? $("realImg").src : "", `Evidencia real ${label}`)
+        { eyebrow: "Referencia", title: label, source: $("theoryImg").src },
+        { eyebrow: "Evidencia real", title: label, source: hasPhoto("real") ? $("realImg").src : "" }
       ];
-  surface.innerHTML = `
-    <header class="layout-export-head">
-      <div class="layout-export-brand"><span aria-hidden="true">✦</span><div><small>LAY OUT</small><h1>Layout · ${escapeHtml(campaign.label)} ${escapeHtml(campaign.icon)}</h1><p>Tienda: ${escapeHtml(store)} · ${optional ? "Áreas" : "Estación"}: ${escapeHtml(label)}</p></div></div>
-      <div class="layout-export-date"><strong>STARBUCKS</strong><span>${escapeHtml(formatDate())}</span></div>
-    </header>
-    <main class="layout-export-grid">${cards.join("")}</main>
-    <footer class="layout-export-footer"><strong>JUNTÉMONOS MÁS</strong><span>Diseño: Jorge Alcantar Aguiar &amp; Enrique César Flores</span></footer>`;
-  document.body.append(surface);
-  return surface;
-}
-
-async function waitForSurfaceImages(surface) {
-  await Promise.all([...surface.querySelectorAll("img")].map(image => {
-    if (image.complete && image.naturalWidth) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      image.addEventListener("load", resolve, { once: true });
-      image.addEventListener("error", () => reject(new Error("No fue posible preparar una imagen para el PDF.")), { once: true });
-    });
-  }));
-  if (document.fonts?.ready) await document.fonts.ready;
+  const cards = await Promise.all(cardData.map(async card => ({ ...card, source: await pdfImageSource(card.source) })));
+  const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true, putOnlyUsedFonts: true });
+  pdf.setProperties({
+    title: `Layout - ${label} - ${store}`,
+    subject: "Comparativo de layout y evidencia real",
+    author: "Starbucks Layouts",
+    creator: "Starbucks Layouts"
+  });
+  drawPdfHeader(pdf, "Lay Out", `Layout - ${campaign.label}`, `${optional ? "Áreas" : "Estación"}: ${label}`, store);
+  drawPdfCard(pdf, cards[0], 8, 32, 194, 112, "layout-reference");
+  drawPdfCard(pdf, cards[1], 8, 148, 194, 135, "layout-real");
+  drawPdfFooter(pdf, "JUNTÉMONOS MÁS", "Diseño: Jorge Alcantar Aguiar & Enrique César Flores");
+  return { pdf, filename: `Layout_${cleanFilename(label)}_${cleanFilename(store)}.pdf` };
 }
 
 async function exportLayoutPdf() {
   const button = $("exportButton");
-  const station = getStation();
-  const name = station.optional ? `${optionalName(1)}_${optionalName(2)}` : variantLabel();
-  const filename = `Layout_${cleanFilename(name)}_${cleanFilename($("storeName").value.trim() || "Tienda")}.pdf`;
-  let surface = null;
   if (!reviewReady() && !window.confirm("La evidencia está incompleta. ¿Deseas exportar el Lay Out de todos modos?")) return;
   button.disabled = true;
   button.textContent = "Generando…";
   try {
     await loadPdfLibrary();
-    document.body.classList.add("is-exporting");
-    surface = buildLayoutExportSurface();
-    await waitForSurfaceImages(surface);
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const canvas = await window.html2canvas(surface, { scale: 2.25, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0, logging: false });
-    const pdf = new window.jspdf.jsPDF({ unit: "in", format: "a4", orientation: "portrait" });
-    pdf.setProperties({
-      title: `Layout · ${name} · ${$("storeName").value.trim() || "Tienda"}`,
-      subject: "Comparativo de layout y evidencia real",
-      author: "Starbucks Layouts",
-      creator: "Starbucks Layouts"
-    });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = .18;
-    const scale = Math.min((pageWidth - margin * 2) / canvas.width, (pageHeight - margin * 2) / canvas.height);
-    const width = canvas.width * scale;
-    const height = canvas.height * scale;
-    pdf.addImage(canvas.toDataURL("image/jpeg", .97), "JPEG", (pageWidth - width) / 2, (pageHeight - height) / 2, width, height, undefined, "FAST");
+    const { pdf, filename } = await buildLayoutExportDocument();
+    if (pdf.internal.getNumberOfPages() !== 1) throw new Error("La validación impidió una exportación de más de una página.");
     pdf.save(filename);
     announce("Lay Out exportado en una página limpia.");
   } catch (error) {
-    announce(`${error.message} No se generó un PDF incompleto; revisa tu conexión e intenta nuevamente.`);
+    announce(`${error.message} No se generó un PDF incompleto.`);
   } finally {
-    surface?.remove();
-    document.body.classList.remove("is-exporting");
     button.disabled = false;
     button.textContent = "Exportar Lay Out";
   }
 }
 
-function buildImprovementExportSurface() {
-  const surface = document.createElement("div");
-  surface.className = "improvement-export-surface";
-  improvementItems.forEach((item, index) => {
-    const page = document.createElement("section");
-    page.className = "improvement-export-page";
-    page.innerHTML = `
-      <header class="improvement-export-head">
-        <div><span class="eyebrow">Mejora continua · Comparativo ${index + 1}</span><h1>Mejora Operativa Antes | Después</h1><p>${escapeHtml(item.area)}</p></div>
-        <div class="improvement-export-meta"><strong>${escapeHtml($("storeName").value.trim() || "Tienda sin definir")}</strong><span>${formatDate()}</span></div>
-      </header>
-      <div class="improvement-export-photos">
-        <article><strong>ANTES</strong><div>${item.before ? `<img src="${item.before}" alt="Antes de ${escapeHtml(item.area)}">` : `<span>Sin evidencia</span>`}</div></article>
-        <article><strong>DESPUÉS</strong><div>${item.after ? `<img src="${item.after}" alt="Después de ${escapeHtml(item.area)}">` : `<span>Sin evidencia</span>`}</div></article>
-      </div>
-      <section class="improvement-export-note"><span>OBSERVACIÓN DE MEJORA</span><p>${escapeHtml(item.observation || "Sin observaciones adicionales.")}</p></section>
-      <footer><strong>JUNTÉMONOS MÁS</strong><span>Página ${index + 1} de ${improvementItems.length}</span></footer>`;
-    surface.append(page);
+function drawImprovementPhoto(pdf, source, label, x, y, width, height, alias) {
+  pdf.setDrawColor(190, 216, 204);
+  pdf.setLineWidth(.35);
+  pdf.roundedRect(x, y, width, height, 3, 3, "S");
+  pdf.setTextColor(0, 98, 65);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.text(label.toUpperCase(), x + 4, y + 7);
+  drawPdfImageContain(pdf, source, x + 4, y + 11, width - 8, height - 15, alias);
+}
+
+async function buildImprovementExportDocument() {
+  const store = $("storeName").value.trim() || "Tienda sin definir";
+  const prepared = await Promise.all(improvementItems.map(async item => ({
+    ...item,
+    before: await pdfImageSource(item.before),
+    after: await pdfImageSource(item.after)
+  })));
+  const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true, putOnlyUsedFonts: true });
+  pdf.setProperties({
+    title: `Mejora Operativa - ${store}`,
+    subject: "Comparativo Antes y Después",
+    author: "Starbucks Layouts",
+    creator: "Starbucks Layouts"
   });
-  document.body.append(surface);
-  return surface;
+  prepared.forEach((item, index) => {
+    if (index > 0) pdf.addPage("a4", "portrait");
+    drawPdfHeader(pdf, `Mejora continua - Comparativo ${index + 1}`, "Mejora Operativa Antes | Después", item.area, store);
+    drawImprovementPhoto(pdf, item.before, "Antes", 8, 33, 95, 205, `before-${index}`);
+    drawImprovementPhoto(pdf, item.after, "Después", 107, 33, 95, 205, `after-${index}`);
+    pdf.setFillColor(238, 246, 242);
+    pdf.roundedRect(8, 243, 194, 38, 2.5, 2.5, "F");
+    pdf.setTextColor(0, 98, 65);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.text("OBSERVACIÓN DE MEJORA", 12, 250);
+    pdf.setTextColor(30, 57, 50);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    const note = pdf.splitTextToSize(item.observation || "Sin observaciones adicionales.", 184).slice(0, 4);
+    pdf.text(note, 12, 257, { lineHeightFactor: 1.35 });
+    drawPdfFooter(pdf, "JUNTÉMONOS MÁS", `Página ${index + 1} de ${prepared.length}`);
+  });
+  return { pdf, filename: `Mejora_Operativa_${cleanFilename(store)}.pdf` };
 }
 
 async function exportImprovementPdf() {
@@ -625,36 +709,17 @@ async function exportImprovementPdf() {
     return;
   }
   if (!improvementReady() && !window.confirm("Hay evidencia Antes o Después pendiente. ¿Deseas exportar la mejora de todos modos?")) return;
-  const store = cleanFilename($("storeName").value.trim() || "Tienda");
-  const filename = `Mejora_Operativa_${store}.pdf`;
-  let surface = null;
   button.disabled = true;
   button.textContent = "Generando…";
   try {
     await loadPdfLibrary();
-    document.body.classList.add("is-exporting");
-    surface = buildImprovementExportSurface();
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const pdf = new window.jspdf.jsPDF({ unit: "in", format: "a4", orientation: "portrait" });
-    const pages = [...surface.querySelectorAll(".improvement-export-page")];
-    for (let index = 0; index < pages.length; index += 1) {
-      if (index > 0) pdf.addPage("a4", "portrait");
-      const canvas = await window.html2canvas(pages[index], { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = .22;
-      const scale = Math.min((pageWidth - margin * 2) / canvas.width, (pageHeight - margin * 2) / canvas.height);
-      const width = canvas.width * scale;
-      const height = canvas.height * scale;
-      pdf.addImage(canvas.toDataURL("image/jpeg", .96), "JPEG", (pageWidth - width) / 2, margin, width, height, undefined, "FAST");
-    }
+    const { pdf, filename } = await buildImprovementExportDocument();
+    if (pdf.internal.getNumberOfPages() !== improvementItems.length) throw new Error("La validación detectó una cantidad incorrecta de páginas.");
     pdf.save(filename);
-    announce(`Mejora Operativa exportada en ${pages.length} ${pages.length === 1 ? "página" : "páginas"}.`);
+    announce(`Mejora Operativa exportada en ${improvementItems.length} ${improvementItems.length === 1 ? "página" : "páginas"}.`);
   } catch (error) {
-    announce(`${error.message} Intenta nuevamente con conexión.`);
+    announce(`${error.message} No se generó un PDF incompleto.`);
   } finally {
-    surface?.remove();
-    document.body.classList.remove("is-exporting");
     button.disabled = false;
     button.textContent = "Exportar Mejora Operativa";
   }
@@ -757,8 +822,12 @@ function bindEvents() {
   $("realBox").addEventListener("keydown", event => {
     if ((event.key === "Enter" || event.key === " ") && !hasPhoto("real")) { event.preventDefault(); $("attachInput").click(); }
   });
-  document.querySelectorAll("[data-jump]").forEach(button => button.addEventListener("click", () => jumpTo(button.dataset.jump)));
-  $("startButton").addEventListener("click", () => jumpTo("configuracion"));
+  document.querySelectorAll("[data-tool]").forEach(button => button.addEventListener("click", () => setToolView(button.dataset.tool)));
+  document.querySelectorAll("[data-jump]").forEach(button => button.addEventListener("click", () => {
+    setToolView("layout", false);
+    jumpTo(button.dataset.jump);
+  }));
+  $("startButton").addEventListener("click", () => { setToolView("layout", false); jumpTo("configuracion"); });
   $("continueButton").addEventListener("click", () => jumpTo("sheet"));
   $("editReferenceButton").addEventListener("click", () => jumpTo("referenceSelector"));
   $("exportButton").addEventListener("click", exportLayoutPdf);
@@ -792,6 +861,7 @@ function bindEvents() {
     renderCatalog();
     renderMaxMinReferences();
     updateView();
+    setToolView("layout", false);
     announce("Revisión reiniciada.");
   });
   window.addEventListener("online", updateNetworkStatus);
@@ -831,6 +901,7 @@ async function init() {
     renderMaxMinReferences();
     renderImprovementList();
     updateView();
+    setToolView("layout", false);
     updateNetworkStatus();
     registerServiceWorker();
   } catch (error) {
