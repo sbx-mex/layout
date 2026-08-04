@@ -30,6 +30,7 @@ OBSOLETE_FILES = ("README.txt",)
 VISUAL_SELECTOR_IDS = {
     "referenceSelector",
     "variantCounter",
+    "catalogHint",
     "compareReferenceReel",
     "comparePrevious",
     "compareNext",
@@ -40,6 +41,7 @@ VISUAL_SELECTOR_IDS = {
     "exportButton",
     "exportImprovementButton",
     "improvementMeta",
+    "improvementPageCount",
 }
 
 
@@ -220,6 +222,8 @@ def main() -> int:
         errors.append("Persisten dos selectores de referencia; debe existir un solo carrete")
     if html.count('id="compareReferenceReel"') != 1:
         errors.append("Debe existir exactamente un carrete de Lay Out")
+    if "Todas las opciones permanecen visibles" not in html or "grid-template-columns:repeat(auto-fit" not in css:
+        errors.append("El carrete no funciona como catálogo dinámico visible")
     for action in ("camera", "attach", "delete"):
         if f'data-photo-action="{action}"' not in html:
             errors.append(f"Falta acción fotográfica: {action}")
@@ -233,10 +237,14 @@ def main() -> int:
         errors.append("El catálogo JSON no está conectado a la app y al modo sin conexión")
     if "serviceWorker.register" not in js or '"sw.js"' not in js:
         errors.append("app.js no registra el service worker")
-    for behavior in ("renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "exportLayoutPdf", "exportImprovementPdf"):
+    for behavior in ("renderCompareReferenceReel", "renderMaxMinReferences", "toggleImprovement", "exportLayoutPdf", "buildImprovementExportSurface", "exportImprovementPdf"):
         if behavior not in js:
             errors.append(f"Falta comportamiento de navegación visual: {behavior}")
-    if '$("sheet")' not in js or '$("improvementModule")' not in js:
+    if 'window.jspdf.jsPDF' not in js or 'pdf.addPage("a4", "portrait")' not in js:
+        errors.append("La exportación no garantiza una página independiente por comparativo")
+    if 'const canvas = await window.html2canvas(sheet' not in js or 'pdf.save(filename)' not in js:
+        errors.append("Lay Out no garantiza una exportación limpia de una sola página")
+    if '$("sheet")' not in js or "buildImprovementExportSurface" not in js:
         errors.append("Las exportaciones no tienen superficies independientes")
     if "improvementModule" in html[html.find('id="sheet"'):html.find('id="mejoraOperativa"')]:
         errors.append("Mejora Operativa continúa anidada dentro de Lay Out")

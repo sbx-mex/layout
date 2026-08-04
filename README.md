@@ -5,7 +5,7 @@ Conjunto de dos herramientas complementarias: Lay Out como función principal y 
 ## Recorrido operativo
 
 1. Captura la tienda y selecciona campaña y estación.
-2. Elige la variante desde el mini carrete visual.
+2. Compara las variantes en el catálogo visual y elige una sin ocultar las demás.
 3. Toca el recuadro de evidencia o arrastra la fotografía del acomodo real.
 4. Amplía el layout si necesitas revisar detalles.
 5. Exporta Lay Out en una sola página limpia.
@@ -25,7 +25,22 @@ La selección se conserva localmente en el dispositivo. Las fotografías se proc
 
 No es necesario modificar `app.js` para agregar campañas, estaciones o variantes compatibles con el esquema actual.
 
-Mejora Operativa reutiliza la tienda y la fecha, pero conserva datos y exportación independientes. No contiene botones ni enlaces de carpetas compartidas.
+Mejora Operativa reutiliza la tienda y la fecha, pero conserva datos y exportación independientes. Cada comparativo Antes/Después ocupa una página A4 y el usuario puede agregar tantas páginas como necesite. No contiene botones ni enlaces de carpetas compartidas.
+
+El catálogo de referencias mantiene visibles todas las variantes en escritorio y usa desplazamiento horizontal en móvil. La selección activa actualiza inmediatamente la referencia mostrada y el PDF de Lay Out.
+
+## 10 mejoras de esta versión
+
+1. Catálogo completo y persistente en escritorio.
+2. Carrete táctil compacto en móvil.
+3. Cambio inmediato de modelo, título y PDF.
+4. Estado activo de alto contraste sin ocultar alternativas.
+5. Navegación por flechas, Inicio y Fin desde el teclado.
+6. Contador dinámico de modelos y páginas.
+7. Evidencia conservada al comparar otra referencia.
+8. Lay Out ajustado explícitamente a una sola hoja A4.
+9. Una página A4 por cada Antes/Después.
+10. Auditoría Python reforzada para impedir regresiones del catálogo y las exportaciones.
 
 ## Validación y mantenimiento
 

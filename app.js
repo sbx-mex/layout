@@ -223,7 +223,7 @@ function renderCompareReferenceReel() {
   $("comparePrevious").disabled = selectedVariant === 0;
   $("compareNext").disabled = selectedVariant === station.variants - 1;
   $("variantCounter").textContent = `${selectedVariant + 1} de ${station.variants}`;
-  requestAnimationFrame(() => reel.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "center" }));
+  $("catalogHint").textContent = `${station.variants} ${station.variants === 1 ? "modelo disponible" : "modelos disponibles"}`;
 }
 
 function renderMaxMinReferences() {
@@ -277,6 +277,11 @@ function addImprovement() {
   updateCompletion();
 }
 
+function updateImprovementPageCount() {
+  const count = improvementItems.length;
+  $("improvementPageCount").textContent = `${count} ${count === 1 ? "comparativo" : "comparativos"} · ${count} ${count === 1 ? "página" : "páginas"}`;
+}
+
 function improvementPhoto(item, kind, label) {
   const source = item[kind];
   return `<div class="improvement-photo${source ? " has-photo" : ""}">
@@ -297,7 +302,7 @@ function renderImprovementList() {
   $("improvementList").innerHTML = improvementItems.map((item, index) => `
     <article class="improvement-card" data-improvement-card="${item.id}">
       <div class="improvement-card__head">
-        <div><span class="eyebrow">Espacio ${index + 1}</span><input aria-label="Nombre del espacio ${index + 1}" value="${escapeHtml(item.area)}" maxlength="80" data-improvement-area="${item.id}"></div>
+        <div><span class="eyebrow">Comparativo ${index + 1} · Página ${index + 1}</span><input aria-label="Nombre del espacio ${index + 1}" value="${escapeHtml(item.area)}" maxlength="80" data-improvement-area="${item.id}"></div>
         <button class="button button--danger pdf-hide" type="button" data-improvement-remove="${item.id}">Eliminar</button>
       </div>
       <div class="improvement-photos">
@@ -308,6 +313,7 @@ function renderImprovementList() {
         <textarea rows="2" maxlength="280" data-improvement-note="${item.id}" placeholder="Ej. Máximos visibles, producto identificado y acceso más rápido.">${escapeHtml(item.observation)}</textarea>
       </label>
     </article>`).join("");
+  updateImprovementPageCount();
 }
 
 async function loadImprovementPhoto(file, id, kind) {
@@ -327,7 +333,7 @@ function selectVariant(index, focus = false) {
   renderCatalog();
   updateView();
   const active = $("compareReferenceReel").querySelector(".reel-thumb.active");
-  active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  if (window.matchMedia("(max-width: 620px)").matches) active?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   if (focus) active?.focus();
 }
 
@@ -477,14 +483,16 @@ async function exportLayoutPdf() {
     sheet.classList.add("pdf-export");
     document.body.classList.add("is-exporting");
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const worker = window.html2pdf().set({
-      margin: [.25, .25, .25, .25], filename,
-      image: { type: "jpeg", quality: .96 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"], avoid: [".block"] }
-    }).from(sheet).toPdf();
-    await worker.save();
+    const canvas = await window.html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 });
+    const pdf = new window.jspdf.jsPDF({ unit: "in", format: "a4", orientation: "portrait" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = .25;
+    const scale = Math.min((pageWidth - margin * 2) / canvas.width, (pageHeight - margin * 2) / canvas.height);
+    const width = canvas.width * scale;
+    const height = canvas.height * scale;
+    pdf.addImage(canvas.toDataURL("image/jpeg", .96), "JPEG", (pageWidth - width) / 2, (pageHeight - height) / 2, width, height, undefined, "FAST");
+    pdf.save(filename);
     announce("Lay Out exportado en una sola página.");
   } catch (error) {
     announce(`${error.message} Se abrirá la impresión del navegador.`);
@@ -497,6 +505,29 @@ async function exportLayoutPdf() {
   }
 }
 
+function buildImprovementExportSurface() {
+  const surface = document.createElement("div");
+  surface.className = "improvement-export-surface";
+  improvementItems.forEach((item, index) => {
+    const page = document.createElement("section");
+    page.className = "improvement-export-page";
+    page.innerHTML = `
+      <header class="improvement-export-head">
+        <div><span class="eyebrow">Mejora continua · Comparativo ${index + 1}</span><h1>Mejora Operativa Antes | Después</h1><p>${escapeHtml(item.area)}</p></div>
+        <div class="improvement-export-meta"><strong>${escapeHtml($("storeName").value.trim() || "Tienda sin definir")}</strong><span>${formatDate()}</span></div>
+      </header>
+      <div class="improvement-export-photos">
+        <article><strong>ANTES</strong><div>${item.before ? `<img src="${item.before}" alt="Antes de ${escapeHtml(item.area)}">` : `<span>Sin evidencia</span>`}</div></article>
+        <article><strong>DESPUÉS</strong><div>${item.after ? `<img src="${item.after}" alt="Después de ${escapeHtml(item.area)}">` : `<span>Sin evidencia</span>`}</div></article>
+      </div>
+      <section class="improvement-export-note"><span>OBSERVACIÓN DE MEJORA</span><p>${escapeHtml(item.observation || "Sin observaciones adicionales.")}</p></section>
+      <footer><strong>JUNTÉMONOS MÁS</strong><span>Página ${index + 1} de ${improvementItems.length}</span></footer>`;
+    surface.append(page);
+  });
+  document.body.append(surface);
+  return surface;
+}
+
 async function exportImprovementPdf() {
   const button = $("exportImprovementButton");
   if (!improvementEnabled || improvementItems.length === 0) {
@@ -506,26 +537,33 @@ async function exportImprovementPdf() {
   if (!improvementReady() && !window.confirm("Hay evidencia Antes o Después pendiente. ¿Deseas exportar la mejora de todos modos?")) return;
   const store = cleanFilename($("storeName").value.trim() || "Tienda");
   const filename = `Mejora_Operativa_${store}.pdf`;
-  const module = $("improvementModule");
+  let surface = null;
   button.disabled = true;
   button.textContent = "Generando…";
   try {
     await loadPdfLibrary();
-    module.classList.add("improvement-export");
     document.body.classList.add("is-exporting");
+    surface = buildImprovementExportSurface();
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    await window.html2pdf().set({
-      margin: [.35, .35, .4, .35], filename,
-      image: { type: "jpeg", quality: .96 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["css", "legacy"], avoid: [".improvement-card"] }
-    }).from(module).save();
-    announce("Mejora Operativa exportada por separado.");
+    const pdf = new window.jspdf.jsPDF({ unit: "in", format: "a4", orientation: "portrait" });
+    const pages = [...surface.querySelectorAll(".improvement-export-page")];
+    for (let index = 0; index < pages.length; index += 1) {
+      if (index > 0) pdf.addPage("a4", "portrait");
+      const canvas = await window.html2canvas(pages[index], { scale: 2, useCORS: true, backgroundColor: "#ffffff", scrollX: 0, scrollY: 0 });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = .22;
+      const scale = Math.min((pageWidth - margin * 2) / canvas.width, (pageHeight - margin * 2) / canvas.height);
+      const width = canvas.width * scale;
+      const height = canvas.height * scale;
+      pdf.addImage(canvas.toDataURL("image/jpeg", .96), "JPEG", (pageWidth - width) / 2, margin, width, height, undefined, "FAST");
+    }
+    pdf.save(filename);
+    announce(`Mejora Operativa exportada en ${pages.length} ${pages.length === 1 ? "página" : "páginas"}.`);
   } catch (error) {
     announce(`${error.message} Intenta nuevamente con conexión.`);
   } finally {
-    module.classList.remove("improvement-export");
+    surface?.remove();
     document.body.classList.remove("is-exporting");
     button.disabled = false;
     button.textContent = "Exportar Mejora Operativa";
@@ -559,6 +597,8 @@ function bindEvents() {
   $("compareReferenceReel").addEventListener("keydown", event => {
     if (event.key === "ArrowLeft") { event.preventDefault(); selectVariant(selectedVariant - 1, true); }
     if (event.key === "ArrowRight") { event.preventDefault(); selectVariant(selectedVariant + 1, true); }
+    if (event.key === "Home") { event.preventDefault(); selectVariant(0, true); }
+    if (event.key === "End") { event.preventDefault(); selectVariant(getStation().variants - 1, true); }
   });
   $("toggleImprovementButton").addEventListener("click", () => toggleImprovement());
   $("addImprovementButton").addEventListener("click", addImprovement);
