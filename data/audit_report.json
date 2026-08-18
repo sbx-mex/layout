@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "schemaVersion": 1,
+  "campaigns": 6,
+  "stations": 12,
+  "layouts": 48,
+  "maxMinReferences": 6,
+  "maxMinAreas": 10,
+  "missingAssets": [],
+  "unusedAssets": [],
+  "obsoleteFiles": [
+    "README.txt"
+  ],
+  "removed": [],
+  "duplicateContentGroups": [
+    [
+      "boh_prep_01.jpg",
+      "produccion_01.jpg"
+    ],
+    [
+      "consolidacion_01.jpg",
+      "handoff_01.jpg"
+    ],
+    [
+      "consolidacion_02.jpg",
+      "handoff_02.jpg"
+    ],
+    [
+      "consolidacion_03.jpg",
+      "handoff_03.jpg"
+    ]
+  ],
+  "performance": {
+    "idleWarmup": true,
+    "storeInputPartialUpdate": true,
+    "lazyThumbnails": true,
+    "offscreenRendering": true,
+    "leanPwaShell": true,
+    "networkFirstAppCode": true
+  },
+  "experience": {
+    "v2Link": true,
+    "v2LinkSubtle": true
+  },
+  "errors": []
+}

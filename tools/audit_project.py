@@ -248,6 +248,14 @@ def main() -> int:
         errors.append("Falta navegación táctil sobre el modelo de referencia")
     if 'href="https://wa.me/message/ENKDSAHYHIGAN1"' not in html:
         errors.append("Falta el enlace de Comentarios y/o Sugerencias")
+    if 'href="https://sbx-mex.github.io/Lay-Out_2.0/"' not in html or 'class="v2-link"' not in html:
+        errors.append("Falta el acceso sutil a la experiencia Lay Out 2.0")
+    if "requestIdleCallback" not in js or "warmNearbyReferences" not in js:
+        errors.append("Falta precarga diferida de referencias cercanas")
+    if '$("storeName").addEventListener("input", updateStoreMeta);' not in js:
+        errors.append("La escritura de tienda sigue provocando renderizados completos")
+    if "content-visibility:auto" not in css.replace(" ", ""):
+        errors.append("Falta optimización de render para contenido fuera de pantalla")
     for action in ("camera", "attach", "delete"):
         if f'data-photo-action="{action}"' not in html:
             errors.append(f"Falta acción fotográfica: {action}")
@@ -292,7 +300,7 @@ def main() -> int:
     )
     if any(token not in js for token in adaptive_pdf_tokens):
         errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
-    if "starbucks-layouts-v14-collapsible-catalog-swipe" not in service_worker:
+    if "starbucks-layouts-v15-performance-v2-link" not in service_worker:
         errors.append("El caché PWA no garantiza la entrega del catálogo plegable")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
@@ -305,6 +313,10 @@ def main() -> int:
     for shell_file in ("index.html", "styles.css", "app.js", "manifest.json", "data/layouts.json", "vendor/jspdf.umd.min.js"):
         if shell_file not in service_worker:
             errors.append(f"El shell sin conexión no incluye {shell_file}")
+    if "assets/maxmin/referencia-maxmin.png" in service_worker:
+        errors.append("El shell PWA sigue precargando una imagen pesada de Mejora Operativa")
+    if "networkFirst" not in service_worker or "cacheFirst" not in service_worker:
+        errors.append("El service worker no separa actualización de código y caché de imágenes")
 
     required_manifest = {"name", "short_name", "start_url", "scope", "display", "icons", "id"}
     absent_manifest = sorted(required_manifest - manifest.keys())
@@ -334,6 +346,18 @@ def main() -> int:
         "obsoleteFiles": obsolete_files,
         "removed": removed,
         "duplicateContentGroups": duplicate_groups,
+        "performance": {
+            "idleWarmup": "requestIdleCallback" in js and "warmNearbyReferences" in js,
+            "storeInputPartialUpdate": '$("storeName").addEventListener("input", updateStoreMeta);' in js,
+            "lazyThumbnails": 'img.loading = "lazy"' in js,
+            "offscreenRendering": "content-visibility:auto" in css.replace(" ", ""),
+            "leanPwaShell": "assets/maxmin/referencia-maxmin.png" not in service_worker,
+            "networkFirstAppCode": "networkFirst" in service_worker,
+        },
+        "experience": {
+            "v2Link": 'href="https://sbx-mex.github.io/Lay-Out_2.0/"' in html,
+            "v2LinkSubtle": 'class="v2-link"' in html,
+        },
         "errors": errors,
     }
     if args.report:

@@ -31,6 +31,9 @@
       <div class="status-group">
         <span id="saveStatus" class="status status--saved" role="status" aria-live="polite">Listo</span>
         <span id="networkStatus" class="status" role="status" aria-live="polite">En línea</span>
+        <a class="v2-link" href="https://sbx-mex.github.io/Lay-Out_2.0/" target="_blank" rel="noopener noreferrer" aria-label="Abrir Lay Out 2.0, nueva experiencia">
+          <span class="v2-link__badge">V2</span><span class="v2-link__label">Nueva experiencia</span><span aria-hidden="true">↗</span>
+        </a>
         <button id="installButton" class="button button--ghost button--compact hidden" type="button">Instalar</button>
       </div>
     </div>
@@ -134,7 +137,7 @@
             </div>
           </div>
           <button id="theoryImageButton" class="imgbox imgbox--button" type="button" aria-label="Ampliar layout de referencia">
-            <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async">
+            <img id="theoryImg" alt="Layout teórico ESP 01" decoding="async" fetchpriority="high">
             <span id="swipeHint" class="swipe-hint pdf-hide" aria-hidden="true"><span>←</span> Desliza para cambiar <span>→</span></span>
           </button>
         </article>
@@ -287,7 +290,7 @@
 
   <dialog id="imageDialog" class="image-dialog">
     <div class="image-dialog__head"><strong id="dialogTitle">Layout</strong><button id="closeDialogButton" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
-    <img id="dialogImage" alt="Vista ampliada del layout">
+    <img id="dialogImage" alt="Vista ampliada del layout" decoding="async">
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

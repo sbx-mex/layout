@@ -26,6 +26,8 @@ let installPrompt = null;
 let toastTimer = null;
 let saveTimer = null;
 let preferences = {};
+let theoryImageRequest = 0;
+const warmedAssets = new Set();
 
 function getCampaign() {
   return campaigns.find(item => item.id === $("campaignSelect").value) || campaigns[0];
@@ -78,6 +80,75 @@ function jumpTo(id) {
   window.setTimeout(() => target.querySelector("input, select, button, [tabindex]")?.focus({ preventScroll: true }), 450);
 }
 
+function runWhenIdle(callback) {
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(callback, { timeout: 1200 });
+    return;
+  }
+  window.setTimeout(callback, 180);
+}
+
+function warmAsset(source) {
+  if (!source || warmedAssets.has(source)) return;
+  warmedAssets.add(source);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = source;
+}
+
+function warmNearbyReferences() {
+  const station = getStation();
+  if (!station || station.optional || station.variants < 1) return;
+  const indexes = [selectedVariant, selectedVariant - 1, selectedVariant + 1]
+    .map(index => (index + station.variants) % station.variants);
+  runWhenIdle(() => indexes.forEach(index => warmAsset(imagePath(index))));
+}
+
+function warmImprovementReference() {
+  const active = improvementReferences[selectedImprovementReference];
+  const next = improvementReferences[selectedImprovementReference + 1];
+  runWhenIdle(() => {
+    warmAsset(active?.src);
+    warmAsset(next?.src);
+  });
+}
+
+function updateStoreMeta() {
+  const campaign = getCampaign();
+  const station = getStation();
+  const store = $("storeName").value.trim() || "Sin definir";
+  const optional = Boolean(station.optional);
+  const label = optional ? `${optionalName(1)} / ${optionalName(2)}` : variantLabel();
+  $("subTitle").textContent = `Tienda: ${store} · ${optional ? "Áreas" : "Estación"}: ${label}`;
+  $("improvementMeta").textContent = `Tienda: ${store} · ${formatDate()}`;
+  $("selectionSummary").textContent = `${store} · ${campaign.label} · ${station.shortName}`;
+  document.title = `Layout · ${label} · ${store}`;
+  savePreferences();
+}
+
+async function setTheoryReference(source, label) {
+  const imageNode = $("theoryImg");
+  if (imageNode.dataset.source === source && imageNode.getAttribute("src")) return;
+  const request = ++theoryImageRequest;
+  imageNode.closest(".imgbox")?.classList.add("is-loading");
+  const preload = new Image();
+  preload.decoding = "async";
+  preload.src = source;
+  try {
+    if (typeof preload.decode === "function") await preload.decode();
+    else await new Promise((resolve, reject) => { preload.onload = resolve; preload.onerror = reject; });
+    if (request !== theoryImageRequest) return;
+    imageNode.src = source;
+    imageNode.dataset.source = source;
+  } catch {
+    if (request !== theoryImageRequest) return;
+    imageNode.src = placeholder(label);
+    imageNode.dataset.source = source;
+  } finally {
+    if (request === theoryImageRequest) imageNode.closest(".imgbox")?.classList.remove("is-loading");
+  }
+}
+
 function setToolView(tool, shouldFocus = true) {
   activeTool = tool === "improvement" ? "improvement" : "layout";
   const showImprovement = activeTool === "improvement";
@@ -103,7 +174,7 @@ function placeholder(label) {
 }
 
 async function loadCatalogData() {
-  const response = await fetch(DATA_URL, { cache: "no-cache" });
+  const response = await fetch(DATA_URL, { cache: "default" });
   if (!response.ok) throw new Error(`No fue posible cargar el catálogo (${response.status}).`);
   const data = await response.json();
   if (data.schemaVersion !== 1 || !Array.isArray(data.campaigns) || !Array.isArray(data.stations) || !Array.isArray(data.optionalAreas) || !Array.isArray(data.improvementModule?.areas) || !Array.isArray(data.improvementModule?.references)) {
@@ -207,6 +278,7 @@ function renderCatalog() {
   if (station.optional) return;
   selectedVariant = Math.max(0, Math.min(selectedVariant, station.variants - 1));
   renderCompareReferenceReel();
+  warmNearbyReferences();
 }
 
 function createReelThumb({ image, label, active, onSelect }) {
@@ -283,6 +355,7 @@ function renderMaxMinReferences() {
   $("maxminReferenceCounter").textContent = `${selectedImprovementReference + 1} de ${improvementReferences.length}`;
   $("maxminPrevious").disabled = selectedImprovementReference === 0;
   $("maxminNext").disabled = selectedImprovementReference === improvementReferences.length - 1;
+  warmImprovementReference();
   requestAnimationFrame(() => reel.querySelector(".active")?.scrollIntoView({ block: "nearest", inline: "center" }));
 }
 
@@ -450,10 +523,8 @@ function updateView() {
     $("layoutTitle").textContent = label;
     $("realTitle").textContent = label;
     $("theoryImg").alt = `Layout teórico ${label}`;
-    $("theoryImg").src = imagePath();
-    $("theoryImg").onerror = () => { $("theoryImg").onerror = null; $("theoryImg").src = placeholder(label); };
+    setTheoryReference(imagePath(), label);
   }
-  renderCompareReferenceReel();
   document.title = `Layout · ${label} · ${store}`;
   savePreferences();
   updateCompletion();
@@ -784,7 +855,7 @@ function bindDropzone(element, target) {
 
 function bindEvents() {
   $("campaignSelect").addEventListener("change", updateView);
-  $("storeName").addEventListener("input", updateView);
+  $("storeName").addEventListener("input", updateStoreMeta);
   $("stationSelect").addEventListener("change", () => {
     selectedVariant = 0;
     setCatalogExpanded(false);
