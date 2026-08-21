@@ -197,6 +197,7 @@ def main() -> int:
     args = parser.parse_args()
 
     errors: list[str] = []
+    warnings: list[str] = []
     for name in REQUIRED:
         if not (ROOT / name).is_file():
             errors.append(f"Falta archivo requerido: {name}")
@@ -321,8 +322,8 @@ def main() -> int:
     )
     if any(token not in js for token in adaptive_pdf_tokens):
         errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
-    if "starbucks-layouts-v17-native-reference-viewer" not in service_worker:
-        errors.append("El caché PWA no garantiza la entrega del visor nativo")
+    if "starbucks-layouts-v18-clean-half-row-pdf" not in service_worker:
+        errors.append("El caché PWA no garantiza la entrega del PDF limpio")
     if "staleWhileRevalidate" not in service_worker:
         errors.append("El caché visual no actualiza recursos sin bloquear la interfaz")
     for ui_asset in ("assets/ui/Damos_Seguimiento.webp", "assets/ui/Un_placer_haber_Ayudado.webp"):
@@ -334,8 +335,22 @@ def main() -> int:
     for marker in ("openReferenceDialog", "applyReferenceZoom", "setPointerCapture", "image.naturalWidth"):
         if marker not in js:
             errors.append(f"Falta ampliación dinámica de referencia: {marker}")
+    clean_pdf_tokens = (
+        "drawLayoutPdfHalf(pdf, card, metadata",
+        "metadata.store",
+        "metadata.campaign",
+        "metadata.date",
+        'section: "Referencia"',
+        'section: "Real"',
+        "const top = PDF_MARGIN;",
+        "const bottom = height - PDF_MARGIN;",
+    )
+    if any(token not in js for token in clean_pdf_tokens):
+        errors.append("Lay Out no garantiza una sola fila limpia por mitad")
+    if "drawPdfHeader(" in layout_export_source or "drawPdfFooter(" in layout_export_source:
+        errors.append("Lay Out conserva encabezado o pie global fuera de las dos mitades")
     if "README.txt" in obsolete_files:
-        errors.append("README.txt es obsoleto y debe retirarse; README.md ya contiene la documentación vigente")
+        warnings.append("README.txt es obsoleto; elimínalo o ejecuta el workflow Depurar archivos obsoletos")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
     if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:
@@ -395,7 +410,9 @@ def main() -> int:
             "premiumExport": "setExportExperience" in js and "exportProgress" in html,
             "orientationGuidance": "requestPhotoInput" in js and "photoGuidanceDialog" in html,
             "nativeReferenceZoom": "applyReferenceZoom" in js and "imageDialogViewport" in html,
+            "cleanHalfRowPdf": "drawLayoutPdfHalf" in js and "metadata.campaign" in js,
         },
+        "warnings": warnings,
         "errors": errors,
     }
     if args.report:
@@ -413,6 +430,8 @@ def main() -> int:
     print(f"- {len(unused_names)} recursos huérfanos y {len(obsolete_files)} archivos obsoletos detectados")
     print(f"- {len(removed)} residuos eliminados de forma segura")
     print(f"- {len(duplicate_groups)} grupos idénticos conservados por tener referencias distintas")
+    for warning in warnings:
+        print(f"- ADVERTENCIA: {warning}")
     print("- HTML, navegación, PWA, accesibilidad y catálogo: correctos")
     return 0
 

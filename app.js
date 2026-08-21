@@ -798,23 +798,42 @@ function drawPdfFooter(pdf, left, right) {
   pdf.text(fitPdfText(pdf, right, width * .62), width - PDF_MARGIN, height - 5.2, { align: "right" });
 }
 
-function drawPdfCard(pdf, card, x, y, width, height, alias) {
+function drawLayoutPdfHalf(pdf, card, metadata, x, y, width, height, alias) {
+  const padding = 2.4;
+  const rowHeight = 10;
+  const separatorWidth = 3.2;
+  const usableWidth = width - padding * 2 - separatorWidth * 3;
+  const columns = [usableWidth * .49, usableWidth * .20, usableWidth * .14, usableWidth * .17];
+  const values = [
+    `${card.title} / ${card.section}`,
+    metadata.store,
+    metadata.campaign,
+    metadata.date
+  ];
   pdf.setFillColor(...PDF_COLORS.panel);
   pdf.setDrawColor(...PDF_COLORS.line);
-  pdf.setLineWidth(.35);
-  pdf.roundedRect(x, y, width, height, 3.2, 3.2, "FD");
+  pdf.setLineWidth(.3);
+  pdf.roundedRect(x, y, width, height, 1.6, 1.6, "FD");
   pdf.setFillColor(...PDF_COLORS.green);
-  pdf.roundedRect(x, y, width, 2.2, 2.2, 2.2, "F");
-  pdf.setTextColor(...PDF_COLORS.green);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(7.5);
-  pdf.text(card.eyebrow.toUpperCase(), x + 3.5, y + 5.5);
-  pdf.setFontSize(13.5);
-  pdf.text(fitPdfText(pdf, card.title, width - 7), x + 3.5, y + 11.2);
+  pdf.rect(x, y, width, 1.2, "F");
+  let cursor = x + padding;
+  values.forEach((value, index) => {
+    pdf.setFont("helvetica", index === 0 ? "bold" : "normal");
+    pdf.setFontSize(index === 0 ? 7.3 : 6.8);
+    pdf.setTextColor(...(index === 0 ? PDF_COLORS.dark : PDF_COLORS.muted));
+    pdf.text(fitPdfText(pdf, value, columns[index] - 1), cursor, y + 6.6);
+    cursor += columns[index];
+    if (index < values.length - 1) {
+      pdf.setDrawColor(...PDF_COLORS.line);
+      pdf.setLineWidth(.22);
+      pdf.line(cursor + separatorWidth / 2, y + 3, cursor + separatorWidth / 2, y + 7.5);
+      cursor += separatorWidth;
+    }
+  });
   pdf.setDrawColor(...PDF_COLORS.green);
-  pdf.setLineWidth(.45);
-  pdf.line(x + 3.5, y + 14, x + width - 3.5, y + 14);
-  drawPdfImageContain(pdf, card.source, x + 3.5, y + 17, width - 7, height - 20.5, alias);
+  pdf.setLineWidth(.35);
+  pdf.line(x + padding, y + rowHeight, x + width - padding, y + rowHeight);
+  drawPdfImageContain(pdf, card.source, x + 1, y + rowHeight + 1, width - 2, height - rowHeight - 2, alias);
 }
 
 function layoutPdfOrientation(pdf, cards) {
@@ -824,24 +843,24 @@ function layoutPdfOrientation(pdf, cards) {
   return properties.width / properties.height < .86 ? "landscape" : "portrait";
 }
 
-function drawLayoutPdfCards(pdf, cards, pageOrientation) {
+function drawLayoutPdfCards(pdf, cards, pageOrientation, metadata) {
   const width = pdf.internal.pageSize.getWidth();
   const height = pdf.internal.pageSize.getHeight();
-  const top = 32;
-  const bottom = height - 14;
+  const top = PDF_MARGIN;
+  const bottom = height - PDF_MARGIN;
   if (pageOrientation === "landscape") {
     const cardWidth = (width - 2 * PDF_MARGIN - PDF_CUT_GAP) / 2;
     const cutX = PDF_MARGIN + cardWidth + PDF_CUT_GAP / 2;
-    drawPdfCard(pdf, cards[0], PDF_MARGIN, top, cardWidth, bottom - top, "layout-reference");
-    drawPdfCard(pdf, cards[1], cutX + PDF_CUT_GAP / 2, top, cardWidth, bottom - top, "layout-real-portrait");
+    drawLayoutPdfHalf(pdf, cards[0], metadata, PDF_MARGIN, top, cardWidth, bottom - top, "layout-reference");
+    drawLayoutPdfHalf(pdf, cards[1], metadata, cutX + PDF_CUT_GAP / 2, top, cardWidth, bottom - top, "layout-real-portrait");
     pdf.setDrawColor(...PDF_COLORS.gold);
     pdf.setLineDashPattern([1.2, 1.2], 0);
     pdf.line(cutX, top, cutX, bottom);
   } else {
     const cardHeight = (bottom - top - PDF_CUT_GAP) / 2;
     const cutY = top + cardHeight + PDF_CUT_GAP / 2;
-    drawPdfCard(pdf, cards[0], PDF_MARGIN, top, width - 2 * PDF_MARGIN, cardHeight, "layout-reference");
-    drawPdfCard(pdf, cards[1], PDF_MARGIN, cutY + PDF_CUT_GAP / 2, width - 2 * PDF_MARGIN, cardHeight, "layout-real-landscape");
+    drawLayoutPdfHalf(pdf, cards[0], metadata, PDF_MARGIN, top, width - 2 * PDF_MARGIN, cardHeight, "layout-reference");
+    drawLayoutPdfHalf(pdf, cards[1], metadata, PDF_MARGIN, cutY + PDF_CUT_GAP / 2, width - 2 * PDF_MARGIN, cardHeight, "layout-real-landscape");
     pdf.setDrawColor(...PDF_COLORS.gold);
     pdf.setLineDashPattern([1.2, 1.2], 0);
     pdf.line(PDF_MARGIN, cutY, width - PDF_MARGIN, cutY);
@@ -855,14 +874,16 @@ async function buildLayoutExportDocument() {
   const store = $("storeName").value.trim() || "Tienda sin definir";
   const optional = Boolean(station.optional);
   const label = optional ? `${optionalName(1)} / ${optionalName(2)}` : variantLabel();
+  const stationName = station.shortName === "Café y Té" ? "Café" : station.shortName;
+  const commonTitle = optional ? "Área operativa" : `${stationName} - ${label}`;
   const cardData = optional
     ? [
-        { eyebrow: "Evidencia real 1", title: optionalName(1), source: hasPhoto("opt1") ? $("optImg1").src : "" },
-        { eyebrow: "Evidencia real 2", title: optionalName(2), source: hasPhoto("opt2") ? $("optImg2").src : "" }
+        { section: "Real 1", title: optionalName(1), source: hasPhoto("opt1") ? $("optImg1").src : "" },
+        { section: "Real 2", title: optionalName(2), source: hasPhoto("opt2") ? $("optImg2").src : "" }
       ]
     : [
-        { eyebrow: "Referencia", title: label, source: $("theoryImg").src },
-        { eyebrow: "Evidencia real", title: label, source: hasPhoto("real") ? $("realImg").src : "" }
+        { section: "Referencia", title: commonTitle, source: $("theoryImg").src },
+        { section: "Real", title: commonTitle, source: hasPhoto("real") ? $("realImg").src : "" }
       ];
   const cards = await Promise.all(cardData.map(async card => ({ ...card, source: await pdfImageSource(card.source) })));
   const probe = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
@@ -875,9 +896,8 @@ async function buildLayoutExportDocument() {
     creator: "Starbucks Layouts"
   });
   paintPdfBackground(pdf);
-  drawPdfHeader(pdf, "Lay Out", `Layout - ${campaign.label}`, `${optional ? "Áreas" : "Estación"}: ${label}`, store);
-  drawLayoutPdfCards(pdf, cards, pageOrientation);
-  drawPdfFooter(pdf, "JUNTÉMONOS MÁS", "Diseño: Jorge Alcantar Aguiar & Enrique César Flores");
+  const metadata = { store, campaign: campaign.label, date: formatDate() };
+  drawLayoutPdfCards(pdf, cards, pageOrientation, metadata);
   return { pdf, filename: `Layout_${cleanFilename(label)}_${cleanFilename(store)}.pdf`, pageOrientation };
 }
 

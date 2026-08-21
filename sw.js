@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v17-native-reference-viewer";
+const CACHE = "starbucks-layouts-v18-clean-half-row-pdf";
 const APP_SHELL = [
   "./",
   "./index.html",

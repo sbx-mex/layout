@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audita la exportación A4 adaptativa y genera pruebas visuales reproducibles."""
+"""Audita la exportación A4 limpia: dos mitades y una fila por mitad."""
 from __future__ import annotations
 
 import argparse
@@ -25,6 +25,14 @@ REQUIRED_MARKERS = (
     "PDF_COLORS.page",
     "PDF_COLORS.panel",
     "PDF_COLORS.gold",
+    "drawLayoutPdfHalf(pdf, card, metadata",
+    "metadata.store",
+    "metadata.campaign",
+    "metadata.date",
+    'section: "Referencia"',
+    'section: "Real"',
+    "const top = PDF_MARGIN;",
+    "const bottom = height - PDF_MARGIN;",
     "layoutPdfOrientation(probe, cards)",
     'return properties.width / properties.height < .86 ? "landscape" : "portrait"',
     'if (pageOrientation === "landscape")',
@@ -58,14 +66,29 @@ def synthetic(size: tuple[int, int], label: str) -> Image.Image:
     return image
 
 
-def panel(canvas: Image.Image, box: tuple[int, int, int, int], label: str, source: Image.Image) -> tuple[int, int]:
+def panel(
+    canvas: Image.Image,
+    box: tuple[int, int, int, int],
+    section: str,
+    source: Image.Image,
+) -> tuple[int, int]:
     draw = ImageDraw.Draw(canvas)
     left, top, right, bottom = box
+    row_height = 58
     draw.rounded_rectangle(box, 18, fill=PANEL, outline=LINE, width=2)
     draw.rounded_rectangle((left, top, right, top + 8), 6, fill=GREEN)
-    draw.text((left + 15, top + 21), label, fill=GREEN, font=ImageFont.load_default())
-    draw.line((left + 12, top + 55, right - 12, top + 55), fill=GREEN, width=2)
-    return contain(canvas, source, (left + 8, top + 64, right - 8, bottom - 8))
+    values = (f"Café - BRW 05-06 / {section}", "Montevideo DT", "Summer", "21 ago 2026")
+    ratios = (.49, .20, .14, .17)
+    usable = right - left - 30
+    cursor = left + 15
+    for index, (value, ratio) in enumerate(zip(values, ratios, strict=True)):
+        draw.text((cursor, top + 24), value, fill=GREEN if index == 0 else "#556F65", font=ImageFont.load_default())
+        cursor += int(usable * ratio)
+        if index < 3:
+            draw.line((cursor + 3, top + 20, cursor + 3, top + 42), fill=LINE, width=2)
+            cursor += 6
+    draw.line((left + 12, top + row_height, right - 12, top + row_height), fill=GREEN, width=2)
+    return contain(canvas, source, (left + 8, top + row_height + 8, right - 8, bottom - 8))
 
 
 def dashed(draw: ImageDraw.ImageDraw, start: tuple[int, int], end: tuple[int, int]) -> None:
@@ -83,16 +106,16 @@ def proof(page: str, evidence: Image.Image) -> tuple[Image.Image, tuple[int, int
     size = LANDSCAPE if page == "landscape" else PORTRAIT
     canvas = Image.new("RGB", size, PAGE)
     reference = synthetic((1400, 820), "REFERENCIA")
-    margin, gap, header, footer = 36, 14, 95, 40
+    margin, gap = 36, 14
     if page == "landscape":
         mid = size[0] // 2
-        panel(canvas, (margin, header, mid - gap, size[1] - footer), "REFERENCIA", reference)
-        placement = panel(canvas, (mid + gap, header, size[0] - margin, size[1] - footer), "ACOMODO REAL", evidence)
-        dashed(ImageDraw.Draw(canvas), (mid, header), (mid, size[1] - footer))
+        panel(canvas, (margin, margin, mid - gap, size[1] - margin), "Referencia", reference)
+        placement = panel(canvas, (mid + gap, margin, size[0] - margin, size[1] - margin), "Real", evidence)
+        dashed(ImageDraw.Draw(canvas), (mid, margin), (mid, size[1] - margin))
     else:
-        mid = (header + size[1] - footer) // 2
-        panel(canvas, (margin, header, size[0] - margin, mid - gap), "REFERENCIA", reference)
-        placement = panel(canvas, (margin, mid + gap, size[0] - margin, size[1] - footer), "ACOMODO REAL", evidence)
+        mid = size[1] // 2
+        panel(canvas, (margin, margin, size[0] - margin, mid - gap), "Referencia", reference)
+        placement = panel(canvas, (margin, mid + gap, size[0] - margin, size[1] - margin), "Real", evidence)
         dashed(ImageDraw.Draw(canvas), (margin, mid), (size[0] - margin, mid))
     return canvas, placement
 
@@ -115,6 +138,9 @@ def main() -> int:
     for marker in REQUIRED_MARKERS:
         if marker not in source:
             fail(f"falta regla premium: {marker}")
+    layout_build = source[source.index("async function buildLayoutExportDocument"):source.index("async function exportLayoutPdf")]
+    if "drawPdfHeader(" in layout_build or "drawPdfFooter(" in layout_build:
+        fail("Lay Out conserva encabezado o pie global")
     match = re.search(r"const MIN_EXPORT_FEEDBACK_MS = (\d+);", source)
     if not match or int(match.group(1)) < 700:
         fail("el aviso de espera no permanece el tiempo mínimo legible")
@@ -138,6 +164,10 @@ def main() -> int:
         "horizontalPhotoExport": "portrait",
         "verticalPhotoExport": "landscape",
         "warmPalette": True,
+        "globalHeader": False,
+        "globalFooter": False,
+        "singleMetadataRowPerHalf": True,
+        "metadataOrder": ["stationSection", "store", "campaign", "date"],
         "waitingAndCompletionStates": True,
         "placementsPx": {"horizontal": horizontal_size, "vertical": vertical_size},
     }
