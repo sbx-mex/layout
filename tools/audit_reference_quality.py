@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Valida resolución, nitidez y visor dinámico de las referencias operativas."""
+"""Valida únicamente resolución, nitidez y visor de referencias operativas.
+
+Los archivos obsoletos pertenecen a ``audit_project.py``. Mantener los
+alcances separados evita que una advertencia documental bloquee la auditoría
+visual y permite que cada comprobación reporte fallos reales de su dominio.
+"""
 from __future__ import annotations
 
 import argparse
@@ -83,12 +88,11 @@ def main() -> int:
         for marker in markers:
             if marker not in source:
                 errors.append(f"{file_name}: falta regla del visor: {marker}")
-    if (ROOT / "README.txt").exists():
-        errors.append("README.txt sigue presente aunque README.md es la fuente vigente")
-
     duplicates = [files for files in hashes.values() if len(files) > 1]
     report = {
         "status": "failed" if errors else "passed",
+        "scope": "reference-images-and-viewer",
+        "documentationAudit": "delegated-to-audit_project.py",
         "references": len(records),
         "minimumResolution": [min(r["width"] for r in records), min(r["height"] for r in records)] if records else [0, 0],
         "minimumEdgeVariance": min((r["edgeVariance"] for r in records), default=0),
@@ -109,6 +113,7 @@ def main() -> int:
     print(f"- Resolución mínima: {report['minimumResolution'][0]}x{report['minimumResolution'][1]}")
     print(f"- Nitidez mínima: {report['minimumEdgeVariance']}")
     print(f"- {len(duplicates)} grupos idénticos conservados por uso operativo")
+    print("- Documentación y obsoletos: delegados a audit_project.py")
     print("- Visor nativo: ajuste, zoom 350%, arrastre, teclado y táctil")
     return 0
 
