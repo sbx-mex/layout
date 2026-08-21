@@ -69,7 +69,20 @@ jobs:
       - name: Registrar cambios
         if: inputs.accion == 'ELIMINAR'
         run: |
-          git add -A
+          python - <<'PY' > "${RUNNER_TEMP}/rutas-eliminadas.txt"
+          import json
+          import os
+          from pathlib import Path
+
+          report = json.loads(Path(os.environ["RUNNER_TEMP"], "depuracion.json").read_text(encoding="utf-8"))
+          for path in report.get("removed", []):
+              if path.endswith("/"):
+                  continue
+              print(path)
+          PY
+          while IFS= read -r path; do
+            [ -n "$path" ] && git add -- "$path"
+          done < "${RUNNER_TEMP}/rutas-eliminadas.txt"
           if git diff --cached --quiet; then
             echo "No existen archivos obsoletos por eliminar."
             exit 0
