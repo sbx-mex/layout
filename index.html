@@ -291,8 +291,19 @@
   </div>
 
   <dialog id="imageDialog" class="image-dialog">
-    <div class="image-dialog__head"><strong id="dialogTitle">Layout</strong><button id="closeDialogButton" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
-    <img id="dialogImage" alt="Vista ampliada del layout" decoding="async">
+    <div class="image-dialog__head">
+      <div><strong id="dialogTitle">Layout</strong><small id="dialogQuality">Preparando imagen original…</small></div>
+      <div class="image-dialog__tools" aria-label="Controles de ampliación">
+        <button id="zoomOutButton" class="icon-button" type="button" aria-label="Alejar imagen" title="Alejar">−</button>
+        <button id="zoomFitButton" class="zoom-level" type="button" aria-label="Ajustar imagen al espacio">Ajustar</button>
+        <button id="zoomInButton" class="icon-button" type="button" aria-label="Ampliar imagen" title="Ampliar">+</button>
+        <button id="closeDialogButton" class="icon-button" type="button" aria-label="Cerrar">×</button>
+      </div>
+    </div>
+    <div id="imageDialogViewport" class="image-dialog__viewport" tabindex="0" aria-label="Vista ampliada; arrastra para recorrer la imagen">
+      <img id="dialogImage" alt="Vista ampliada del layout" decoding="async">
+    </div>
+    <div class="image-dialog__hint"><span>Arrastra para recorrer</span><span>Usa +, − o doble clic para ampliar</span></div>
   </dialog>
 
   <dialog id="photoGuidanceDialog" class="flow-dialog orientation-dialog" aria-labelledby="photoGuidanceTitle">

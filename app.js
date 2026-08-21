@@ -42,6 +42,8 @@ let preferences = {};
 let theoryImageRequest = 0;
 let pendingPhotoInput = null;
 let exportInProgress = false;
+let referenceZoom = 1;
+let referenceDrag = null;
 const warmedAssets = new Set();
 
 function getCampaign() {
@@ -598,11 +600,53 @@ function clearAllPhotos() {
   Object.keys(PHOTO_TARGETS).forEach(key => clearPhoto(key, false));
 }
 
-function openTheoryDialog() {
+function applyReferenceZoom(nextZoom, preserveCenter = true) {
+  const viewport = $("imageDialogViewport");
+  const image = $("dialogImage");
+  if (!image.naturalWidth || !viewport.clientWidth) return;
+  const previousWidth = image.getBoundingClientRect().width || viewport.clientWidth;
+  const centerX = viewport.scrollLeft + viewport.clientWidth / 2;
+  const centerY = viewport.scrollTop + viewport.clientHeight / 2;
+  referenceZoom = Math.min(3.5, Math.max(1, Number(nextZoom.toFixed(2))));
+  const availableWidth = Math.max(280, viewport.clientWidth - 28);
+  const availableHeight = Math.max(220, viewport.clientHeight - 28);
+  const fitScale = Math.min(availableWidth / image.naturalWidth, availableHeight / image.naturalHeight, 1);
+  image.style.width = `${Math.round(image.naturalWidth * fitScale * referenceZoom)}px`;
+  image.style.height = "auto";
+  image.classList.toggle("is-zoomed", referenceZoom > 1);
+  $("zoomFitButton").textContent = referenceZoom === 1 ? "Ajustar" : `${Math.round(referenceZoom * 100)}%`;
+  $("zoomOutButton").disabled = referenceZoom <= 1;
+  $("zoomInButton").disabled = referenceZoom >= 3.5;
+  if (!preserveCenter || referenceZoom === 1) {
+    viewport.scrollTo({ left: 0, top: 0, behavior: "auto" });
+    return;
+  }
+  const ratio = image.getBoundingClientRect().width / Math.max(1, previousWidth);
+  viewport.scrollLeft = Math.max(0, centerX * ratio - viewport.clientWidth / 2);
+  viewport.scrollTop = Math.max(0, centerY * ratio - viewport.clientHeight / 2);
+}
+
+async function openReferenceDialog(source, title, alt = "Vista ampliada del layout") {
   const dialog = $("imageDialog");
-  $("dialogImage").src = $("theoryImg").src;
-  $("dialogTitle").textContent = `Layout de referencia · ${variantLabel()}`;
+  const image = $("dialogImage");
+  $("dialogTitle").textContent = title;
+  $("dialogQuality").textContent = "Preparando imagen original…";
+  image.alt = alt;
+  image.src = source;
   if (typeof dialog.showModal === "function") dialog.showModal();
+  try {
+    await image.decode();
+    $("dialogQuality").textContent = `${image.naturalWidth} × ${image.naturalHeight} px · calidad original`;
+  } catch {
+    $("dialogQuality").textContent = "Vista disponible";
+  }
+  referenceZoom = 1;
+  applyReferenceZoom(1, false);
+  $("imageDialogViewport").focus({ preventScroll: true });
+}
+
+function openTheoryDialog() {
+  openReferenceDialog($("theoryImg").src, `Layout de referencia · ${variantLabel()}`, $("theoryImg").alt);
 }
 
 function loadPdfLibrary() {
@@ -976,9 +1020,7 @@ function bindEvents() {
   $("maxminNext").addEventListener("click", () => selectImprovementReference(selectedImprovementReference + 1));
   $("maxminReferenceButton").addEventListener("click", () => {
     const active = improvementReferences[selectedImprovementReference];
-    $("dialogImage").src = active.src;
-    $("dialogTitle").textContent = active.title;
-    if (typeof $("imageDialog").showModal === "function") $("imageDialog").showModal();
+    openReferenceDialog(active.src, active.title, `Referencia visual: ${active.title}`);
   });
   $("maxminReferenceReel").addEventListener("keydown", event => {
     if (event.key === "ArrowLeft") { event.preventDefault(); selectImprovementReference(selectedImprovementReference - 1); }
@@ -1049,8 +1091,49 @@ function bindEvents() {
   $("zoomTheoryButton").addEventListener("click", openTheoryDialog);
   $("theoryImageButton").addEventListener("click", openTheoryDialog);
   bindReferenceSwipe();
+  $("zoomOutButton").addEventListener("click", () => applyReferenceZoom(referenceZoom - .25));
+  $("zoomInButton").addEventListener("click", () => applyReferenceZoom(referenceZoom + .25));
+  $("zoomFitButton").addEventListener("click", () => applyReferenceZoom(1, false));
+  $("imageDialogViewport").addEventListener("dblclick", () => applyReferenceZoom(referenceZoom > 1 ? 1 : 2, false));
+  $("imageDialogViewport").addEventListener("wheel", event => {
+    if (!event.ctrlKey && !event.metaKey) return;
+    event.preventDefault();
+    applyReferenceZoom(referenceZoom + (event.deltaY < 0 ? .25 : -.25));
+  }, { passive: false });
+  $("imageDialogViewport").addEventListener("keydown", event => {
+    if (["+", "="].includes(event.key)) { event.preventDefault(); applyReferenceZoom(referenceZoom + .25); }
+    if (event.key === "-") { event.preventDefault(); applyReferenceZoom(referenceZoom - .25); }
+    if (event.key === "0") { event.preventDefault(); applyReferenceZoom(1, false); }
+    if (event.key === "Escape") $("imageDialog").close();
+  });
+  $("imageDialogViewport").addEventListener("pointerdown", event => {
+    if (referenceZoom <= 1 || event.button !== 0) return;
+    const viewport = $("imageDialogViewport");
+    referenceDrag = { x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+    viewport.setPointerCapture(event.pointerId);
+    viewport.classList.add("is-dragging");
+  });
+  $("imageDialogViewport").addEventListener("pointermove", event => {
+    if (!referenceDrag) return;
+    const viewport = $("imageDialogViewport");
+    viewport.scrollLeft = referenceDrag.left - (event.clientX - referenceDrag.x);
+    viewport.scrollTop = referenceDrag.top - (event.clientY - referenceDrag.y);
+  });
+  ["pointerup", "pointercancel"].forEach(type => $("imageDialogViewport").addEventListener(type, () => {
+    referenceDrag = null;
+    $("imageDialogViewport").classList.remove("is-dragging");
+  }));
   $("closeDialogButton").addEventListener("click", () => $("imageDialog").close());
   $("imageDialog").addEventListener("click", event => { if (event.target === $("imageDialog")) $("imageDialog").close(); });
+  $("imageDialog").addEventListener("close", () => {
+    referenceDrag = null;
+    referenceZoom = 1;
+    $("dialogImage").removeAttribute("style");
+    $("imageDialogViewport").classList.remove("is-dragging");
+  });
+  window.addEventListener("resize", () => {
+    if ($("imageDialog").open) applyReferenceZoom(referenceZoom, false);
+  });
   $("photoGuidanceAction").addEventListener("click", continuePhotoInput);
   $("photoGuidanceCancel").addEventListener("click", () => { pendingPhotoInput = null; $("photoGuidanceDialog").close(); });
   $("photoGuidanceDialog").addEventListener("close", () => { pendingPhotoInput = null; });

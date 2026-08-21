@@ -57,6 +57,11 @@ VISUAL_SELECTOR_IDS = {
     "exportCompleteTitle",
     "exportCompleteCopy",
     "exportCompleteClose",
+    "imageDialogViewport",
+    "dialogQuality",
+    "zoomOutButton",
+    "zoomFitButton",
+    "zoomInButton",
 }
 
 
@@ -316,8 +321,8 @@ def main() -> int:
     )
     if any(token not in js for token in adaptive_pdf_tokens):
         errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
-    if "starbucks-layouts-v16-premium-export" not in service_worker:
-        errors.append("El caché PWA no garantiza la entrega de la experiencia premium")
+    if "starbucks-layouts-v17-native-reference-viewer" not in service_worker:
+        errors.append("El caché PWA no garantiza la entrega del visor nativo")
     if "staleWhileRevalidate" not in service_worker:
         errors.append("El caché visual no actualiza recursos sin bloquear la interfaz")
     for ui_asset in ("assets/ui/Damos_Seguimiento.webp", "assets/ui/Un_placer_haber_Ayudado.webp"):
@@ -326,6 +331,11 @@ def main() -> int:
     for marker in ("requestPhotoInput", "setExportExperience", "showExportComplete", "MIN_EXPORT_FEEDBACK_MS"):
         if marker not in js:
             errors.append(f"Falta experiencia premium de exportación: {marker}")
+    for marker in ("openReferenceDialog", "applyReferenceZoom", "setPointerCapture", "image.naturalWidth"):
+        if marker not in js:
+            errors.append(f"Falta ampliación dinámica de referencia: {marker}")
+    if "README.txt" in obsolete_files:
+        errors.append("README.txt es obsoleto y debe retirarse; README.md ya contiene la documentación vigente")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
     if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:
@@ -384,6 +394,7 @@ def main() -> int:
             "v2LinkSubtle": 'class="v2-link"' in html,
             "premiumExport": "setExportExperience" in js and "exportProgress" in html,
             "orientationGuidance": "requestPhotoInput" in js and "photoGuidanceDialog" in html,
+            "nativeReferenceZoom": "applyReferenceZoom" in js and "imageDialogViewport" in html,
         },
         "errors": errors,
     }

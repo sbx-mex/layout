@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v16-premium-export";
+const CACHE = "starbucks-layouts-v17-native-reference-viewer";
 const APP_SHELL = [
   "./",
   "./index.html",
