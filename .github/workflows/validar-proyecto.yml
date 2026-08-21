@@ -35,14 +35,22 @@ jobs:
           python -m json.tool data/layouts.schema.json > /dev/null
           python -m json.tool manifest.json > /dev/null
 
+      - name: Instalar auditoría visual
+        run: python -m pip install --disable-pip-version-check pillow pypdf
+
       - name: Auditar proyecto
-        run: python tools/audit_project.py --report "${RUNNER_TEMP}/audit.json"
+        run: |
+          python tools/optimize_ui_assets.py --check
+          python tools/audit_project.py --report "${RUNNER_TEMP}/audit.json"
+          python tools/audit_pdf_export.py --output-dir "${RUNNER_TEMP}/pdf-audit"
 
       - name: Publicar reporte
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: auditoria-layout-${{ github.run_number }}
-          path: ${{ runner.temp }}/audit.json
+          path: |
+            ${{ runner.temp }}/audit.json
+            ${{ runner.temp }}/pdf-audit
           if-no-files-found: warn
           retention-days: 14
