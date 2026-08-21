@@ -2,6 +2,19 @@
 
 const DATA_URL = "data/layouts.json";
 const STORAGE_KEY = "layout-preferences-v3";
+const MIN_EXPORT_FEEDBACK_MS = 900;
+const PDF_MARGIN = 6;
+const PDF_CUT_GAP = 2;
+const PDF_COLORS = {
+  page: [247, 243, 234],
+  panel: [255, 253, 249],
+  green: [0, 98, 65],
+  dark: [0, 59, 42],
+  ink: [30, 57, 50],
+  muted: [85, 111, 101],
+  line: [184, 207, 197],
+  gold: [198, 156, 84]
+};
 const PHOTO_TARGETS = {
   real: { img: "realImg", empty: "realEmpty", input: "attachInput", camera: "cameraInput" },
   opt1: { img: "optImg1", empty: "optEmpty1", input: "optAttach1", camera: "optCamera1" },
@@ -27,6 +40,8 @@ let toastTimer = null;
 let saveTimer = null;
 let preferences = {};
 let theoryImageRequest = 0;
+let pendingPhotoInput = null;
+let exportInProgress = false;
 const warmedAssets = new Set();
 
 function getCampaign() {
@@ -596,6 +611,52 @@ function loadPdfLibrary() {
     : Promise.reject(new Error("El generador PDF local no está disponible. Actualiza la aplicación e intenta nuevamente."));
 }
 
+function requestPhotoInput(input) {
+  if (!input) return;
+  pendingPhotoInput = input;
+  const camera = input.hasAttribute("capture");
+  $("photoGuidanceAction").textContent = camera ? "Abrir cámara" : "Elegir imagen";
+  $("photoGuidanceCopy").textContent = camera
+    ? "Gira el celular antes de abrir la cámara para aprovechar mejor el acomodo real."
+    : "Si puedes elegir, usa una foto horizontal para una lectura más amplia del espacio.";
+  const dialog = $("photoGuidanceDialog");
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else {
+    const selected = pendingPhotoInput;
+    pendingPhotoInput = null;
+    selected.click();
+  }
+}
+
+function continuePhotoInput() {
+  const selected = pendingPhotoInput;
+  pendingPhotoInput = null;
+  $("photoGuidanceDialog").close();
+  selected?.click();
+}
+
+function setExportExperience(active, button) {
+  exportInProgress = active;
+  document.body.classList.toggle("is-exporting", active);
+  $("exportProgress").classList.toggle("hidden", !active);
+  $("exportProgress").setAttribute("aria-hidden", String(!active));
+  [$("exportButton"), $("exportImprovementButton")].forEach(candidate => {
+    if (candidate) candidate.disabled = active;
+  });
+  if (button) button.setAttribute("aria-busy", String(active));
+}
+
+function waitForPaint() {
+  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+function showExportComplete(title, copy) {
+  $("exportCompleteTitle").textContent = title;
+  $("exportCompleteCopy").textContent = copy;
+  const dialog = $("exportCompleteDialog");
+  if (typeof dialog.showModal === "function") dialog.showModal();
+}
+
 function fileToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -627,7 +688,7 @@ function fitPdfText(pdf, value, maxWidth) {
 
 function drawPdfImageContain(pdf, source, x, y, width, height, alias) {
   if (!source) {
-    pdf.setFillColor(243, 247, 245);
+    pdf.setFillColor(...PDF_COLORS.page);
     pdf.roundedRect(x, y, width, height, 2.4, 2.4, "F");
     pdf.setTextColor(100, 126, 116);
     pdf.setFont("helvetica", "bold");
@@ -641,85 +702,107 @@ function drawPdfImageContain(pdf, source, x, y, width, height, alias) {
   const imageHeight = properties.height * scale;
   const imageX = x + (width - imageWidth) / 2;
   const imageY = y + (height - imageHeight) / 2;
-  pdf.setFillColor(255, 255, 255);
+  pdf.setFillColor(...PDF_COLORS.panel);
   pdf.rect(x, y, width, height, "F");
   pdf.addImage(source, pdfImageFormat(source), imageX, imageY, imageWidth, imageHeight, alias, "FAST");
 }
 
+function paintPdfBackground(pdf) {
+  const width = pdf.internal.pageSize.getWidth();
+  const height = pdf.internal.pageSize.getHeight();
+  pdf.setFillColor(...PDF_COLORS.page);
+  pdf.rect(0, 0, width, height, "F");
+}
+
 function drawPdfHeader(pdf, eyebrow, title, subtitle, store) {
-  pdf.setDrawColor(0, 98, 65);
+  const width = pdf.internal.pageSize.getWidth();
+  pdf.setDrawColor(...PDF_COLORS.green);
   pdf.setLineWidth(.8);
-  pdf.line(8, 28, 202, 28);
-  pdf.setTextColor(0, 98, 65);
+  pdf.line(PDF_MARGIN, 28, width - PDF_MARGIN, 28);
+  pdf.setTextColor(...PDF_COLORS.green);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(8.5);
-  pdf.text(eyebrow.toUpperCase(), 8, 11);
+  pdf.text(eyebrow.toUpperCase(), PDF_MARGIN, 11);
   pdf.setFontSize(19);
-  pdf.text(title, 8, 18.5);
-  pdf.setTextColor(30, 57, 50);
+  pdf.text(fitPdfText(pdf, title, width - 2 * PDF_MARGIN - 54), PDF_MARGIN, 18.5);
+  pdf.setTextColor(...PDF_COLORS.ink);
   pdf.setFontSize(9.5);
-  pdf.text(fitPdfText(pdf, subtitle, 137), 8, 24);
-  pdf.setTextColor(0, 98, 65);
+  pdf.text(fitPdfText(pdf, subtitle, width - 2 * PDF_MARGIN - 54), PDF_MARGIN, 24);
+  pdf.setTextColor(...PDF_COLORS.green);
   pdf.setFontSize(9);
-  pdf.text("STARBUCKS", 202, 12, { align: "right" });
-  pdf.setTextColor(85, 111, 101);
+  pdf.text("STARBUCKS", width - PDF_MARGIN, 12, { align: "right" });
+  pdf.setTextColor(...PDF_COLORS.muted);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
-  pdf.text(fitPdfText(pdf, store, 48), 202, 18, { align: "right" });
-  pdf.text(formatDate(), 202, 23, { align: "right" });
+  pdf.text(fitPdfText(pdf, store, 48), width - PDF_MARGIN, 18, { align: "right" });
+  pdf.text(formatDate(), width - PDF_MARGIN, 23, { align: "right" });
 }
 
 function drawPdfFooter(pdf, left, right) {
-  pdf.setDrawColor(205, 222, 214);
+  const width = pdf.internal.pageSize.getWidth();
+  const height = pdf.internal.pageSize.getHeight();
+  const lineY = height - 10;
+  pdf.setDrawColor(...PDF_COLORS.line);
   pdf.setLineWidth(.25);
-  pdf.line(8, 287, 202, 287);
-  pdf.setTextColor(0, 98, 65);
+  pdf.line(PDF_MARGIN, lineY, width - PDF_MARGIN, lineY);
+  pdf.setTextColor(...PDF_COLORS.green);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(7.5);
-  pdf.text(left, 8, 291.5);
-  pdf.setTextColor(85, 111, 101);
+  pdf.text(left, PDF_MARGIN, height - 5.2);
+  pdf.setTextColor(...PDF_COLORS.muted);
   pdf.setFont("helvetica", "normal");
-  pdf.text(right, 202, 291.5, { align: "right" });
+  pdf.text(fitPdfText(pdf, right, width * .62), width - PDF_MARGIN, height - 5.2, { align: "right" });
 }
 
 function drawPdfCard(pdf, card, x, y, width, height, alias) {
-  pdf.setDrawColor(190, 216, 204);
+  pdf.setFillColor(...PDF_COLORS.panel);
+  pdf.setDrawColor(...PDF_COLORS.line);
   pdf.setLineWidth(.35);
-  pdf.roundedRect(x, y, width, height, 3.2, 3.2, "S");
-  pdf.setTextColor(0, 98, 65);
+  pdf.roundedRect(x, y, width, height, 3.2, 3.2, "FD");
+  pdf.setFillColor(...PDF_COLORS.green);
+  pdf.roundedRect(x, y, width, 2.2, 2.2, 2.2, "F");
+  pdf.setTextColor(...PDF_COLORS.green);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(7.5);
   pdf.text(card.eyebrow.toUpperCase(), x + 3.5, y + 5.5);
   pdf.setFontSize(13.5);
   pdf.text(fitPdfText(pdf, card.title, width - 7), x + 3.5, y + 11.2);
-  pdf.setDrawColor(0, 98, 65);
+  pdf.setDrawColor(...PDF_COLORS.green);
   pdf.setLineWidth(.45);
   pdf.line(x + 3.5, y + 14, x + width - 3.5, y + 14);
   drawPdfImageContain(pdf, card.source, x + 3.5, y + 17, width - 7, height - 20.5, alias);
 }
 
-function layoutPdfCardGeometry(pdf, realSource) {
+function layoutPdfOrientation(pdf, cards) {
+  const evidence = cards.map(card => card.source).filter(Boolean).slice(-1)[0];
+  if (!evidence) return "portrait";
+  const properties = pdf.getImageProperties(evidence);
+  return properties.width / properties.height < .86 ? "landscape" : "portrait";
+}
+
+function drawLayoutPdfCards(pdf, cards, pageOrientation) {
+  const width = pdf.internal.pageSize.getWidth();
+  const height = pdf.internal.pageSize.getHeight();
   const top = 32;
-  const bottom = 283;
-  const gap = 4;
-  let referenceHeight = 109;
-  let orientation = "empty";
-  if (realSource) {
-    const properties = pdf.getImageProperties(realSource);
-    const ratio = properties.width / properties.height;
-    if (ratio >= 1.2) {
-      referenceHeight = 109;
-      orientation = "landscape";
-    } else if (ratio <= 0.82) {
-      referenceHeight = 91;
-      orientation = "portrait";
-    } else {
-      referenceHeight = 100;
-      orientation = "square";
-    }
+  const bottom = height - 14;
+  if (pageOrientation === "landscape") {
+    const cardWidth = (width - 2 * PDF_MARGIN - PDF_CUT_GAP) / 2;
+    const cutX = PDF_MARGIN + cardWidth + PDF_CUT_GAP / 2;
+    drawPdfCard(pdf, cards[0], PDF_MARGIN, top, cardWidth, bottom - top, "layout-reference");
+    drawPdfCard(pdf, cards[1], cutX + PDF_CUT_GAP / 2, top, cardWidth, bottom - top, "layout-real-portrait");
+    pdf.setDrawColor(...PDF_COLORS.gold);
+    pdf.setLineDashPattern([1.2, 1.2], 0);
+    pdf.line(cutX, top, cutX, bottom);
+  } else {
+    const cardHeight = (bottom - top - PDF_CUT_GAP) / 2;
+    const cutY = top + cardHeight + PDF_CUT_GAP / 2;
+    drawPdfCard(pdf, cards[0], PDF_MARGIN, top, width - 2 * PDF_MARGIN, cardHeight, "layout-reference");
+    drawPdfCard(pdf, cards[1], PDF_MARGIN, cutY + PDF_CUT_GAP / 2, width - 2 * PDF_MARGIN, cardHeight, "layout-real-landscape");
+    pdf.setDrawColor(...PDF_COLORS.gold);
+    pdf.setLineDashPattern([1.2, 1.2], 0);
+    pdf.line(PDF_MARGIN, cutY, width - PDF_MARGIN, cutY);
   }
-  const realY = top + referenceHeight + gap;
-  return { referenceHeight, realY, realHeight: bottom - realY, orientation };
+  pdf.setLineDashPattern([], 0);
 }
 
 async function buildLayoutExportDocument() {
@@ -738,45 +821,52 @@ async function buildLayoutExportDocument() {
         { eyebrow: "Evidencia real", title: label, source: hasPhoto("real") ? $("realImg").src : "" }
       ];
   const cards = await Promise.all(cardData.map(async card => ({ ...card, source: await pdfImageSource(card.source) })));
-  const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true, putOnlyUsedFonts: true });
+  const probe = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+  const pageOrientation = layoutPdfOrientation(probe, cards);
+  const pdf = new window.jspdf.jsPDF({ unit: "mm", format: "a4", orientation: pageOrientation, compress: true, putOnlyUsedFonts: true });
   pdf.setProperties({
     title: `Layout - ${label} - ${store}`,
     subject: "Comparativo de layout y evidencia real",
     author: "Starbucks Layouts",
     creator: "Starbucks Layouts"
   });
+  paintPdfBackground(pdf);
   drawPdfHeader(pdf, "Lay Out", `Layout - ${campaign.label}`, `${optional ? "Áreas" : "Estación"}: ${label}`, store);
-  const geometry = layoutPdfCardGeometry(pdf, cards[1].source);
-  drawPdfCard(pdf, cards[0], 8, 32, 194, geometry.referenceHeight, "layout-reference");
-  drawPdfCard(pdf, cards[1], 8, geometry.realY, 194, geometry.realHeight, `layout-real-${geometry.orientation}`);
+  drawLayoutPdfCards(pdf, cards, pageOrientation);
   drawPdfFooter(pdf, "JUNTÉMONOS MÁS", "Diseño: Jorge Alcantar Aguiar & Enrique César Flores");
-  return { pdf, filename: `Layout_${cleanFilename(label)}_${cleanFilename(store)}.pdf` };
+  return { pdf, filename: `Layout_${cleanFilename(label)}_${cleanFilename(store)}.pdf`, pageOrientation };
 }
 
 async function exportLayoutPdf() {
   const button = $("exportButton");
+  if (exportInProgress) return;
   if (!reviewReady() && !window.confirm("La evidencia está incompleta. ¿Deseas exportar el Lay Out de todos modos?")) return;
-  button.disabled = true;
-  button.textContent = "Generando…";
+  const started = performance.now();
+  const original = button.textContent;
+  setExportExperience(true, button);
+  button.textContent = "Preparando PDF…";
   try {
+    await waitForPaint();
     await loadPdfLibrary();
-    const { pdf, filename } = await buildLayoutExportDocument();
+    const { pdf, filename, pageOrientation } = await buildLayoutExportDocument();
     if (pdf.internal.getNumberOfPages() !== 1) throw new Error("La validación impidió una exportación de más de una página.");
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, MIN_EXPORT_FEEDBACK_MS - (performance.now() - started))));
     pdf.save(filename);
-    announce("Lay Out exportado en una página limpia.");
+    showExportComplete("Lay Out listo", `Descarga completada en una página A4 ${pageOrientation === "landscape" ? "horizontal" : "vertical"}.`);
   } catch (error) {
     announce(`${error.message} No se generó un PDF incompleto.`);
   } finally {
-    button.disabled = false;
-    button.textContent = "Exportar Lay Out";
+    setExportExperience(false, button);
+    button.textContent = original;
   }
 }
 
 function drawImprovementPhoto(pdf, source, label, x, y, width, height, alias) {
-  pdf.setDrawColor(190, 216, 204);
+  pdf.setFillColor(...PDF_COLORS.panel);
+  pdf.setDrawColor(...PDF_COLORS.line);
   pdf.setLineWidth(.35);
-  pdf.roundedRect(x, y, width, height, 3, 3, "S");
-  pdf.setTextColor(0, 98, 65);
+  pdf.roundedRect(x, y, width, height, 3, 3, "FD");
+  pdf.setTextColor(...PDF_COLORS.green);
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(10);
   pdf.text(label.toUpperCase(), x + 4, y + 7);
@@ -799,11 +889,13 @@ async function buildImprovementExportDocument() {
   });
   prepared.forEach((item, index) => {
     if (index > 0) pdf.addPage("a4", "portrait");
+    paintPdfBackground(pdf);
     drawPdfHeader(pdf, `Mejora continua - Comparativo ${index + 1}`, "Mejora Operativa Antes | Después", item.area, store);
     drawImprovementPhoto(pdf, item.before, "Antes", 8, 33, 95, 205, `before-${index}`);
     drawImprovementPhoto(pdf, item.after, "Después", 107, 33, 95, 205, `after-${index}`);
-    pdf.setFillColor(238, 246, 242);
-    pdf.roundedRect(8, 243, 194, 38, 2.5, 2.5, "F");
+    pdf.setFillColor(...PDF_COLORS.panel);
+    pdf.setDrawColor(...PDF_COLORS.line);
+    pdf.roundedRect(8, 243, 194, 38, 2.5, 2.5, "FD");
     pdf.setTextColor(0, 98, 65);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(8);
@@ -820,24 +912,29 @@ async function buildImprovementExportDocument() {
 
 async function exportImprovementPdf() {
   const button = $("exportImprovementButton");
+  if (exportInProgress) return;
   if (!improvementEnabled || improvementItems.length === 0) {
     announce("Agrega al menos un espacio de mejora antes de exportar.");
     return;
   }
   if (!improvementReady() && !window.confirm("Hay evidencia Antes o Después pendiente. ¿Deseas exportar la mejora de todos modos?")) return;
-  button.disabled = true;
-  button.textContent = "Generando…";
+  const started = performance.now();
+  const original = button.textContent;
+  setExportExperience(true, button);
+  button.textContent = "Preparando PDF…";
   try {
+    await waitForPaint();
     await loadPdfLibrary();
     const { pdf, filename } = await buildImprovementExportDocument();
     if (pdf.internal.getNumberOfPages() !== improvementItems.length) throw new Error("La validación detectó una cantidad incorrecta de páginas.");
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, MIN_EXPORT_FEEDBACK_MS - (performance.now() - started))));
     pdf.save(filename);
-    announce(`Mejora Operativa exportada en ${improvementItems.length} ${improvementItems.length === 1 ? "página" : "páginas"}.`);
+    showExportComplete("Mejora lista", `${improvementItems.length} ${improvementItems.length === 1 ? "página preparada" : "páginas preparadas"} para dar seguimiento.`);
   } catch (error) {
     announce(`${error.message} No se generó un PDF incompleto.`);
   } finally {
-    button.disabled = false;
-    button.textContent = "Exportar Mejora Operativa";
+    setExportExperience(false, button);
+    button.textContent = original;
   }
 }
 
@@ -904,7 +1001,7 @@ function bindEvents() {
       return;
     }
     const selector = action.dataset.improvementAction === "camera" ? "data-improvement-camera" : "data-improvement-file";
-    $("improvementList").querySelector(`[${selector}="${kind}"][data-improvement-id="${item.id}"]`)?.click();
+    requestPhotoInput($("improvementList").querySelector(`[${selector}="${kind}"][data-improvement-id="${item.id}"]`));
   });
   $("improvementList").addEventListener("input", event => {
     const areaId = Number(event.target.dataset.improvementArea);
@@ -931,14 +1028,14 @@ function bindEvents() {
     const target = button.dataset.photoTarget;
     const action = button.dataset.photoAction;
     if (action === "delete") return clearPhoto(target);
-    $(action === "camera" ? PHOTO_TARGETS[target].camera : PHOTO_TARGETS[target].input).click();
+    requestPhotoInput($(action === "camera" ? PHOTO_TARGETS[target].camera : PHOTO_TARGETS[target].input));
   }));
   bindDropzone($("realBox"), "real");
   document.querySelectorAll("[data-drop-target]").forEach(element => bindDropzone(element, element.dataset.dropTarget));
-  $("realBox").addEventListener("click", () => $("attachInput").click());
-  document.querySelectorAll("[data-drop-target]").forEach(element => element.addEventListener("click", () => $(PHOTO_TARGETS[element.dataset.dropTarget].input).click()));
+  $("realBox").addEventListener("click", () => requestPhotoInput($("attachInput")));
+  document.querySelectorAll("[data-drop-target]").forEach(element => element.addEventListener("click", () => requestPhotoInput($(PHOTO_TARGETS[element.dataset.dropTarget].input))));
   $("realBox").addEventListener("keydown", event => {
-    if ((event.key === "Enter" || event.key === " ") && !hasPhoto("real")) { event.preventDefault(); $("attachInput").click(); }
+    if ((event.key === "Enter" || event.key === " ") && !hasPhoto("real")) { event.preventDefault(); requestPhotoInput($("attachInput")); }
   });
   document.querySelectorAll("[data-tool]").forEach(button => button.addEventListener("click", () => setToolView(button.dataset.tool)));
   document.querySelectorAll("[data-jump]").forEach(button => button.addEventListener("click", () => {
@@ -954,6 +1051,10 @@ function bindEvents() {
   bindReferenceSwipe();
   $("closeDialogButton").addEventListener("click", () => $("imageDialog").close());
   $("imageDialog").addEventListener("click", event => { if (event.target === $("imageDialog")) $("imageDialog").close(); });
+  $("photoGuidanceAction").addEventListener("click", continuePhotoInput);
+  $("photoGuidanceCancel").addEventListener("click", () => { pendingPhotoInput = null; $("photoGuidanceDialog").close(); });
+  $("photoGuidanceDialog").addEventListener("close", () => { pendingPhotoInput = null; });
+  $("exportCompleteClose").addEventListener("click", () => $("exportCompleteDialog").close());
   $("resetButton").addEventListener("click", () => {
     if (!window.confirm("¿Reiniciar tienda, selección y evidencias de esta revisión?")) return;
     localStorage.removeItem(STORAGE_KEY);

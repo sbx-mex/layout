@@ -36,11 +36,14 @@
     "lazyThumbnails": true,
     "offscreenRendering": true,
     "leanPwaShell": true,
-    "networkFirstAppCode": true
+    "networkFirstAppCode": true,
+    "staleWhileRevalidateVisuals": true
   },
   "experience": {
     "v2Link": true,
-    "v2LinkSubtle": true
+    "v2LinkSubtle": true,
+    "premiumExport": true,
+    "orientationGuidance": true
   },
   "errors": []
 }

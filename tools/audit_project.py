@@ -48,6 +48,15 @@ VISUAL_SELECTOR_IDS = {
     "layoutWorkspace",
     "layoutToolButton",
     "improvementToolButton",
+    "photoGuidanceDialog",
+    "photoGuidanceAction",
+    "photoGuidanceCancel",
+    "photoGuidanceCopy",
+    "exportProgress",
+    "exportCompleteDialog",
+    "exportCompleteTitle",
+    "exportCompleteCopy",
+    "exportCompleteClose",
 }
 
 
@@ -102,7 +111,11 @@ def validate_catalog(data: dict, errors: list[str]) -> set[str]:
     if len(station_codes) != len(set(station_codes)):
         errors.append("Existen códigos de estación duplicados")
 
-    expected_assets = {"juntemonos-mas.png"}
+    expected_assets = {
+        "juntemonos-mas.png",
+        "ui/Damos_Seguimiento.webp",
+        "ui/Un_placer_haber_Ayudado.webp",
+    }
     optional_count = 0
     for position, station in enumerate(stations, start=1):
         required = ("code", "name", "shortName", "category", "variants", "assetBase")
@@ -291,17 +304,28 @@ def main() -> int:
     if "href=" in layout_export_source or "<a " in layout_export_source or "pdf.link" in layout_export_source:
         errors.append("La superficie PDF de Lay Out contiene hipervínculos")
     adaptive_pdf_tokens = (
-        "layoutPdfCardGeometry(pdf, cards[1].source)",
-        "geometry.referenceHeight",
-        "geometry.realY",
-        "geometry.realHeight",
-        'orientation = "portrait"',
-        'orientation = "landscape"',
+        "layoutPdfOrientation(probe, cards)",
+        'return properties.width / properties.height < .86 ? "landscape" : "portrait"',
+        'if (pageOrientation === "landscape")',
+        "pdf.internal.pageSize.getWidth()",
+        "pdf.internal.pageSize.getHeight()",
+        "PDF_COLORS.page",
+        "PDF_COLORS.panel",
+        "PDF_COLORS.gold",
+        "PDF_CUT_GAP",
     )
     if any(token not in js for token in adaptive_pdf_tokens):
         errors.append("La hoja PDF no ajusta dinámicamente la fotografía real según su orientación")
-    if "starbucks-layouts-v15-performance-v2-link" not in service_worker:
-        errors.append("El caché PWA no garantiza la entrega del catálogo plegable")
+    if "starbucks-layouts-v16-premium-export" not in service_worker:
+        errors.append("El caché PWA no garantiza la entrega de la experiencia premium")
+    if "staleWhileRevalidate" not in service_worker:
+        errors.append("El caché visual no actualiza recursos sin bloquear la interfaz")
+    for ui_asset in ("assets/ui/Damos_Seguimiento.webp", "assets/ui/Un_placer_haber_Ayudado.webp"):
+        if ui_asset not in html or ui_asset not in service_worker:
+            errors.append(f"El recurso de exportación no está conectado a HTML y PWA: {ui_asset}")
+    for marker in ("requestPhotoInput", "setExportExperience", "showExportComplete", "MIN_EXPORT_FEEDBACK_MS"):
+        if marker not in js:
+            errors.append(f"Falta experiencia premium de exportación: {marker}")
     if 'pdf.internal.getNumberOfPages() !== 1' not in js:
         errors.append("Lay Out no bloquea regresiones de más de una página")
     if "buildLayoutExportDocument" not in js or "buildImprovementExportDocument" not in js:
@@ -353,10 +377,13 @@ def main() -> int:
             "offscreenRendering": "content-visibility:auto" in css.replace(" ", ""),
             "leanPwaShell": "assets/maxmin/referencia-maxmin.png" not in service_worker,
             "networkFirstAppCode": "networkFirst" in service_worker,
+            "staleWhileRevalidateVisuals": "staleWhileRevalidate" in service_worker,
         },
         "experience": {
             "v2Link": 'href="https://sbx-mex.github.io/Lay-Out_2.0/"' in html,
             "v2LinkSubtle": 'class="v2-link"' in html,
+            "premiumExport": "setExportExperience" in js and "exportProgress" in html,
+            "orientationGuidance": "requestPhotoInput" in js and "photoGuidanceDialog" in html,
         },
         "errors": errors,
     }

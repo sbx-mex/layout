@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE = "starbucks-layouts-v15-performance-v2-link";
+const CACHE = "starbucks-layouts-v16-premium-export";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,8 @@ const APP_SHELL = [
   "./manifest.json",
   "./data/layouts.json",
   "./assets/juntemonos-mas.png",
+  "./assets/ui/Damos_Seguimiento.webp",
+  "./assets/ui/Un_placer_haber_Ayudado.webp",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -54,6 +56,16 @@ async function cacheFirst(request) {
   return response;
 }
 
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  const fresh = fetch(request).then(response => {
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  }).catch(() => cached || Response.error());
+  return cached || fresh;
+}
+
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
@@ -69,7 +81,7 @@ self.addEventListener("fetch", event => {
   }
 
   if (isVisualAsset) {
-    event.respondWith(cacheFirst(event.request));
+    event.respondWith(staleWhileRevalidate(event.request));
     return;
   }
 

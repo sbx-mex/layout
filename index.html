@@ -14,6 +14,8 @@
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preload" href="data/layouts.json" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="assets/ui/Damos_Seguimiento.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/ui/Un_placer_haber_Ayudado.webp" as="image" type="image/webp">
   <link rel="stylesheet" href="styles.css">
   <script defer src="vendor/jspdf.umd.min.js"></script>
   <script defer src="app.js"></script>
@@ -291,6 +293,43 @@
   <dialog id="imageDialog" class="image-dialog">
     <div class="image-dialog__head"><strong id="dialogTitle">Layout</strong><button id="closeDialogButton" class="icon-button" type="button" aria-label="Cerrar">×</button></div>
     <img id="dialogImage" alt="Vista ampliada del layout" decoding="async">
+  </dialog>
+
+  <dialog id="photoGuidanceDialog" class="flow-dialog orientation-dialog" aria-labelledby="photoGuidanceTitle">
+    <div class="flow-dialog__body">
+      <span class="flow-dialog__icon" aria-hidden="true">▭</span>
+      <span class="eyebrow">Antes de continuar</span>
+      <h2 id="photoGuidanceTitle">Recomendación: captura la foto de manera horizontal</h2>
+      <p id="photoGuidanceCopy">Así el acomodo real se verá más amplio y fácil de revisar.</p>
+      <div class="orientation-map" aria-label="Cómo se ajusta el PDF">
+        <span><strong>Foto horizontal</strong><small>Exportación vertical</small></span>
+        <span><strong>Foto vertical</strong><small>Exportación horizontal</small></span>
+      </div>
+      <div class="flow-dialog__actions">
+        <button id="photoGuidanceCancel" class="button button--ghost" type="button">Cancelar</button>
+        <button id="photoGuidanceAction" class="button" type="button">Continuar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="exportProgress" class="export-progress hidden" role="status" aria-live="assertive" aria-hidden="true">
+    <div class="export-progress__card">
+      <img src="assets/ui/Damos_Seguimiento.webp" alt="Le damos seguimiento: estamos trabajando para ti" width="768" height="512">
+      <div class="export-progress__copy">
+        <span class="export-progress__spinner" aria-hidden="true"></span>
+        <div><strong>Estamos preparando tu PDF</strong><p>No muevas nada; la descarga aparecerá enseguida.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="exportCompleteDialog" class="flow-dialog completion-dialog" aria-labelledby="exportCompleteTitle">
+    <img src="assets/ui/Un_placer_haber_Ayudado.webp" alt="Un placer haber ayudado" width="768" height="512">
+    <div class="flow-dialog__body">
+      <span class="eyebrow">Exportación completada</span>
+      <h2 id="exportCompleteTitle">Tu PDF está listo</h2>
+      <p id="exportCompleteCopy">La descarga comenzó correctamente.</p>
+      <button id="exportCompleteClose" class="button" type="button">Continuar</button>
+    </div>
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
